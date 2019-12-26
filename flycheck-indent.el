@@ -29,6 +29,7 @@
 ;;; Code:
 
 (require 'indent-lint)
+(require 'flycheck)
 
 (defgroup flycheck-indent nil
   "Asynchronous indentation checker"
@@ -36,6 +37,31 @@
   :group 'tools
   :link '(url-link :tag "Github" "https://github.com/conao3/indent-lint.el"))
 
+(defconst flycheck-indent-run-sexp-str
+  (flycheck-sexp-to-string
+   '(progn
+      (package-initialize)
+      (require 'indent-lint)
+      (indent-lint-batch))))
+
+(flycheck-define-checker indent-elisp
+  "A indent checker for Elisp."
+  :command ("emacs"
+            (eval flycheck-emacs-args)
+            "-L" "."
+            "--eval" (eval flycheck-indent-run-sexp-str)
+            (eval (buffer-name (current-buffer))))
+  :standard-input t
+  :error-patterns
+  ((warning (file-name) ":" line ": warning: " (message)))
+  :modes emacs-lisp-mode)
+
+;;;###autoload
+(defun flycheck-indent-setup ()
+  "Setup Flycheck Indent."
+  (interactive)
+  (add-to-list 'flycheck-checkers 'indent-elisp t)
+  (flycheck-add-next-checker 'emacs-lisp 'indent-elisp))
 
 (provide 'flycheck-indent)
 
