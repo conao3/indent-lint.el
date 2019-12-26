@@ -40,6 +40,14 @@
   "The function to eval before indent.
 Function will be called with 2 variables; `(,raw-buffer ,indent-buffer).")
 
+(defconst indent-lint-directory (eval-and-compile
+                                  (file-name-directory
+                                   (or (bound-and-true-p
+                                        byte-compile-current-file)
+                                       load-file-name
+                                       (buffer-file-name))))
+  "Path to indent-lint root.")
+
 (defvar indent-lint-exit-code nil
   "Diff exit code.")
 

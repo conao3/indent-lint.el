@@ -54,6 +54,7 @@
   :command ("emacs"
             (eval flycheck-emacs-args)
             "-L" "."
+            "-L" (eval indent-lint-directory)
             (option "--eval" flycheck-emacs-lisp-package-user-dir nil
                     flycheck-option-emacs-lisp-package-user-dir)
             (option "--eval" flycheck-emacs-lisp-initialize-packages nil
