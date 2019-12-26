@@ -6,7 +6,6 @@
 ;; Version: 0.0.1
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "26"))
-;; License: GPL-3.0
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
