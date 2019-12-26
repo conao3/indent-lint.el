@@ -43,7 +43,7 @@
       (package-initialize)
       (require 'indent-lint)
       (setq indent-lint-before-indent-fn
-            (lambda (_raw-buffer _indent-buffer)
+            (lambda (raw-buffer _indent-buffer)
               (with-current-buffer raw-buffer
                 (ignore-errors
                   (eval-buffer)))))

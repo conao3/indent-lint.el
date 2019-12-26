@@ -67,8 +67,7 @@ If omit BUF, lint `current-buffer'."
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
-         (diff-buffer (get-buffer-create "*indent-lint diff*"))
-         (diff-buffer-with-line (get-buffer-create "*indent-lint diff with line*")))
+         (diff-buffer (get-buffer-create "*indent-lint diff*")))
     (with-temp-buffer
       (insert contents)
       (let ((buffer-file-name (buffer-name buf*)))
@@ -76,13 +75,11 @@ If omit BUF, lint `current-buffer'."
         (funcall indent-lint-before-indent-fn buf* (current-buffer))
         (indent-region (point-min) (point-max)))
       (diff-no-select buf* (current-buffer)
-                      nil 'no-async diff-buffer)
-      (diff-no-select buf* (current-buffer)
                       `(,(format "--old-line-format=\"%s:%%dn: warning: Indent mismatch\n\""
                                  (buffer-name buf*))
                         "--new-line-format=\"\""
                         "--unchanged-line-format=\"\"")
-                      'no-async diff-buffer-with-line))
+                      'no-async diff-buffer))
     (cond
      ((eq 0 indent-lint-exit-code))
      ((eq 1 indent-lint-exit-code)
@@ -90,7 +87,7 @@ If omit BUF, lint `current-buffer'."
      ((eq 2 indent-lint-exit-code)
       (display-buffer diff-buffer)
       (error "Diff error")))
-    `(,diff-buffer ,diff-buffer-with-line)))
+    diff-buffer))
 
 (defun indent-lint--get-stdin-buffer ()
   "Get stdin string until EOF and return its buffer."
@@ -136,7 +133,7 @@ Usage:
       (when (and file-name (equal "" (buffer-string)))
         (insert-file-contents file-name))
       (rename-buffer (or file-name "*stdin*")))
-    (pcase-let ((`(,diff-buffer ,diff-buffer-with-line) (indent-lint stdin-buf)))
+    (let ((diff-buffer (indent-lint stdin-buf)))
       (when file-name
         (with-current-buffer diff-buffer
           (let ((inhibit-read-only t))
@@ -148,10 +145,8 @@ Usage:
       (cond
        ((eq 0 indent-lint-exit-code))
        ((eq 1 indent-lint-exit-code)
-        (princ (with-current-buffer diff-buffer-with-line (buffer-string)))
         (princ (with-current-buffer diff-buffer (buffer-string))))
        ((eq 2 indent-lint-exit-code)
-        (princ (with-current-buffer diff-buffer-with-line (buffer-string)))
         (princ (with-current-buffer diff-buffer (buffer-string)))))
       (kill-emacs indent-lint-exit-code))))
 
