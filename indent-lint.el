@@ -60,16 +60,22 @@ If omit BUF, lint `current-buffer'."
                      (buffer-string)))
          (mode (with-current-buffer buf*
                  major-mode))
-         (diff-buffer (get-buffer-create "*indent-lint diff*")))
+         (diff-buffer (get-buffer-create "*indent-lint diff*"))
+         (diff-buffer-with-line (get-buffer-create "*indent-lint diff with line*")))
     (with-temp-buffer
       (insert contents)
       (funcall mode)
       (indent-region (point-min) (point-max))
       (diff-no-select buf* (current-buffer)
-                      nil nil diff-buffer))
+                      nil nil diff-buffer)
+      (diff-no-select buf* (current-buffer)
+                      '("--old-line-format=\"<%dn< %L\""
+                        "--new-line-format=\"\""
+                        "--unchanged-line-format=\"\"")
+                      nil diff-buffer-with-line))
     (unless (eq 0 indent-lint-exit-code)
       (display-buffer diff-buffer))
-    diff-buffer))
+    `(,diff-buffer ,diff-buffer-with-line)))
 
 ;;;###autoload
 (defun indent-lint-setup ()
