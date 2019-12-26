@@ -74,12 +74,12 @@ If omit BUF, lint `current-buffer'."
       (funcall mode)
       (indent-region (point-min) (point-max))
       (diff-no-select buf* (current-buffer)
-                      nil nil diff-buffer)
+                      nil 'no-async diff-buffer)
       (diff-no-select buf* (current-buffer)
                       '("--old-line-format=\"<%dn< %L\""
                         "--new-line-format=\"\""
                         "--unchanged-line-format=\"\"")
-                      nil diff-buffer-with-line))
+                      'no-async diff-buffer-with-line))
     (cond
      ((eq 0 indent-lint-exit-code))
      ((eq 1 indent-lint-exit-code)
