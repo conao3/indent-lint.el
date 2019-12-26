@@ -29,6 +29,7 @@
 
 ;;; Code:
 
+(require 'seq)
 (require 'diff)
 
 (defgroup indent-lint nil
@@ -87,6 +88,43 @@ If omit BUF, lint `current-buffer'."
       (display-buffer diff-buffer)
       (error "Diff error")))
     `(,diff-buffer ,diff-buffer-with-line)))
+
+(defun indent-lint--get-stdin-buffer ()
+  "Get stdin string until EOF and return its buffer."
+  (let ((read-line (lambda () (read-string "")))
+        (buf (get-buffer-create "*stdin*"))
+        line)
+    (with-current-buffer buf
+      (ignore-errors
+        (while (setq line (funcall read-line))
+          (insert line "\n"))))
+    buf))
+
+(defun indent-lint-batch ()
+  "Run `indent-lint' and output diff to standard output.
+Use this only with --batch, it won't work interactively.
+
+Status code:
+0 - No indentation errors and no output
+1 - Found indentation errors and diff output
+2 - Diff program exit with errors"
+  (unless noninteractive
+    (error "`indent-lint-batch' can be used only with --batch"))
+  (indent-lint-setup)
+  (let ((inhibit-message t)
+        (stdin-buf (indent-lint--get-stdin-buffer)))
+    (with-current-buffer stdin-buf
+      (emacs-lisp-mode))
+    (seq-let (diff-buffer diff-buffer-with-line) (indent-lint stdin-buf)
+      (cond
+       ((eq 0 indent-lint-exit-code))
+       ((eq 1 indent-lint-exit-code)
+        (princ (with-current-buffer diff-buffer-with-line (buffer-string)))
+        (princ (with-current-buffer diff-buffer (buffer-string))))
+       ((eq 2 indent-lint-exit-code)
+        (princ (with-current-buffer diff-buffer-with-line (buffer-string)))
+        (princ (with-current-buffer diff-buffer (buffer-string)))))
+      (kill-emacs indent-lint-exit-code))))
 
 ;;;###autoload
 (defun indent-lint-setup ()
