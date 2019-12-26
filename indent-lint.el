@@ -54,6 +54,7 @@ FN is `diff-sentinel', ARGS is its arguments."
 (defun indent-lint (&optional buf)
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
+  (interactive)
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
