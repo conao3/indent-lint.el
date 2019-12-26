@@ -37,6 +37,20 @@
   :group 'tools
   :link '(url-link :tag "Github" "https://github.com/conao3/indent-lint.el"))
 
+(defvar indent-lint-exit-code nil
+  "Diff exit code.")
+
+(defvar indent-lint-advice-alist
+  '((diff-sentinel . indent-lint-advice--diff-sentinel))
+  "Alist for indent-lint advice.
+See `indent-lint-setup' and `indent-lint-teardown'.")
+
+(defun indent-lint-advice--diff-sentinel (fn &rest args)
+  "Advice for `diff-sentinel'.
+FN is `diff-sentinel', ARGS is its arguments."
+  (setq indent-lint-exit-code (nth 0 args))
+  (apply fn args))
+
 (defun indent-lint (&optional buf)
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
@@ -52,6 +66,20 @@ If omit BUF, lint `current-buffer'."
       (indent-region (point-min) (point-max))
       (diff-no-select buf (current-buffer)
                       nil nil diff-buffer))))
+
+;;;###autoload
+(defun indent-lint-setup ()
+  "Setup indent-lint."
+  (interactive)
+  (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
+    (advice-add sym :around fn)))
+
+;;;###autoload
+(defun indent-lint-teardown ()
+  "Setup indent-lint."
+  (interactive)
+  (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
+    (advice-remove sym fn)))
 
 (provide 'indent-lint)
 
