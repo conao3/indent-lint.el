@@ -23,7 +23,7 @@
 
 ;;; Commentary:
 
-;; Async indentation checker
+;; Indentation checker
 
 
 ;;; Code:

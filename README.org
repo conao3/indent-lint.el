@@ -25,10 +25,17 @@
   - [[#special-thanks][Special Thanks]]
 
 * Description
+Indentation checker and async flycheck frontend.
 
 * Install
+M-x ~package-install~
 
 * Usage
+To enable, use something like this
+#+begin_src emacs-lisp
+  (eval-after-load 'flycheck
+    '(flycheck-indent-setup))
+#+end_src
 
 * Customize
 
