@@ -29,11 +29,29 @@
 
 ;;; Code:
 
+(require 'diff)
+
 (defgroup indent-lint nil
   "Asynchronous indentation checker"
   :prefix "indent-lint-"
   :group 'tools
   :link '(url-link :tag "Github" "https://github.com/conao3/indent-lint.el"))
+
+(defun indent-lint (&optional buf)
+  "Indent lint for BUF.
+If omit BUF, lint `current-buffer'."
+  (let* ((buf* (or buf (current-buffer)))
+         (contents (with-current-buffer buf*
+                     (buffer-string)))
+         (mode (with-current-buffer buf*
+                 major-mode))
+         (diff-buffer (get-buffer-create "*indent-lint diff*")))
+    (with-temp-buffer
+      (insert contents)
+      (funcall mode)
+      (indent-region (point-min) (point-max))
+      (diff-no-select buf (current-buffer)
+                      nil nil diff-buffer))))
 
 (provide 'indent-lint)
 
