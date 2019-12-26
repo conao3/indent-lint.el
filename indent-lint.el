@@ -104,17 +104,36 @@ If omit BUF, lint `current-buffer'."
   "Run `indent-lint' and output diff to standard output.
 Use this only with --batch, it won't work interactively.
 
+Extra argument; FILENAME is needed to guess `major-mode' to indent.
+
 Status code:
-0 - No indentation errors and no output
-1 - Found indentation errors and diff output
-2 - Diff program exit with errors"
+  0 - No indentation errors and no output
+  1 - Found indentation errors and diff output
+  2 - Diff program exit with errors
+
+Usage:
+  - Import code from stdin and guess `major-mode' from header or footer.
+      cat sample.el | \
+        {EMACS} -Q -l indent-lint.el -f indent-lint-batch
+
+  - Import code from stdin and guess `major-mode' from file extension.
+      cat sample.el | \
+        {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el
+
+  - Import code from file and guess `major-mode' from file extension.
+    (Sending EOF is needed after Emacs run)
+      {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (indent-lint-setup)
   (let ((inhibit-message t)
-        (stdin-buf (indent-lint--get-stdin-buffer)))
+        (stdin-buf (indent-lint--get-stdin-buffer))
+        (file-name (nth 0 command-line-args-left)))
     (with-current-buffer stdin-buf
-      (emacs-lisp-mode))
+      (when (and file-name (equal "" (buffer-string)))
+        (insert-file-contents file-name))
+      (let ((buffer-file-name (or file-name "*stdin*")))
+        (normal-mode t)))
     (seq-let (diff-buffer diff-buffer-with-line) (indent-lint stdin-buf)
       (cond
        ((eq 0 indent-lint-exit-code))
