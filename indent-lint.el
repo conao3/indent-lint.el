@@ -97,6 +97,18 @@ If omit BUF, lint `current-buffer'."
       (error "Diff error")))
     diff-buffer))
 
+(defun indent-lint--output-debug-info (err)
+  "Output debug info."
+  (let ((file (locate-user-emacs-file "flycheck-indent.debug")))
+    (with-temp-file file
+      (erase-buffer)
+      (insert (format "Error at %s\n" (format-time-string "%Y-%m-%d %H:%M")))
+      (insert (format "Error: %s\n" (pp-to-string err)))
+      (insert "\n")
+      (insert (with-output-to-string
+                (backtrace))))
+    (message (format "Indent-lint exit with errors. See %s" file))))
+
 (defun indent-lint--get-stdin-buffer ()
   "Get stdin string until EOF and return its buffer."
   (let ((read-line (lambda () (read-string "")))
@@ -134,29 +146,32 @@ Usage:
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (indent-lint-setup)
-  (let ((inhibit-message t)
-        (stdin-buf (indent-lint--get-stdin-buffer))
-        (file-name (nth 0 command-line-args-left)))
-    (with-current-buffer stdin-buf
-      (when (and file-name (equal "" (buffer-string)))
-        (insert-file-contents file-name))
-      (rename-buffer (or file-name "*stdin*")))
-    (let ((diff-buffer (indent-lint stdin-buf)))
-      (when file-name
-        (with-current-buffer diff-buffer
-          (let ((inhibit-read-only t))
-            (save-excursion
-              (goto-char (point-min))
-              (ignore-errors
-                (while (search-forward "#<buffer  *temp*>")
-                  (replace-match (format "%s" file-name))))))))
-      (cond
-       ((eq 0 indent-lint-exit-code))
-       ((eq 1 indent-lint-exit-code)
-        (princ (with-current-buffer diff-buffer (buffer-string))))
-       ((eq 2 indent-lint-exit-code)
-        (princ (with-current-buffer diff-buffer (buffer-string)))))
-      (kill-emacs indent-lint-exit-code))))
+  (condition-case err
+      (let ((inhibit-message t)
+            (stdin-buf (indent-lint--get-stdin-buffer))
+            (file-name (nth 0 command-line-args-left)))
+        (with-current-buffer stdin-buf
+          (when (and file-name (equal "" (buffer-string)))
+            (insert-file-contents file-name))
+          (rename-buffer (or file-name "*stdin*")))
+        (let ((diff-buffer (indent-lint stdin-buf)))
+          (when file-name
+            (with-current-buffer diff-buffer
+              (let ((inhibit-read-only t))
+                (save-excursion
+                  (goto-char (point-min))
+                  (ignore-errors
+                    (while (search-forward "#<buffer  *temp*>")
+                      (replace-match (format "%s" file-name))))))))
+          (cond
+           ((eq 0 indent-lint-exit-code))
+           ((eq 1 indent-lint-exit-code)
+            (princ (with-current-buffer diff-buffer (buffer-string))))
+           ((eq 2 indent-lint-exit-code)
+            (princ (with-current-buffer diff-buffer (buffer-string)))))
+          (kill-emacs indent-lint-exit-code)))
+    (error
+     (indent-lint--output-debug-info err))))
 
 ;;;###autoload
 (defun indent-lint-setup ()

@@ -44,9 +44,8 @@
       (require 'indent-lint)
       (setq indent-lint-before-indent-fn
             (lambda (raw-buffer _indent-buffer)
-              (with-current-buffer raw-buffer
-                (ignore-errors
-                  (eval-buffer)))))
+              (ignore-errors
+                (eval-buffer raw-buffer))))
       (indent-lint-batch))))
 
 (flycheck-define-checker indent-elisp
@@ -59,6 +58,8 @@
                     flycheck-option-emacs-lisp-package-user-dir)
             (option "--eval" flycheck-emacs-lisp-initialize-packages nil
                     flycheck-option-emacs-lisp-package-initialize)
+            "--eval" (eval (flycheck-sexp-to-string
+                            `(setq user-emacs-directory ,user-emacs-directory)))
             "--eval" (eval flycheck-indent-run-sexp-str)
             (eval (buffer-name (current-buffer))))
   :standard-input t
@@ -75,7 +76,8 @@
   "Setup Flycheck Indent."
   (interactive)
   (add-to-list 'flycheck-checkers 'indent-elisp 'append)
-  (flycheck-add-next-checker 'emacs-lisp 'indent-elisp 'append))
+  (flycheck-add-next-checker 'emacs-lisp 'indent-elisp 'append)
+  (flycheck-add-next-checker 'emacs-lisp-checkdoc 'indent-elisp 'append))
 
 (provide 'flycheck-indent)
 
