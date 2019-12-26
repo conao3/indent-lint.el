@@ -5,7 +5,7 @@
 ;; Author: Naoya Yamashita <conao3@gmail.com>
 ;; Version: 0.0.1
 ;; Keywords: tools
-;; Package-Requires: ((emacs "26"))
+;; Package-Requires: ((emacs "24.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,6 @@
 
 ;;; Code:
 
-(require 'seq)
 (require 'diff)
 
 (defgroup indent-lint nil
@@ -131,7 +130,7 @@ Usage:
       (when (and file-name (equal "" (buffer-string)))
         (insert-file-contents file-name))
       (rename-buffer (or file-name "*stdin*")))
-    (seq-let (diff-buffer diff-buffer-with-line) (indent-lint stdin-buf)
+    (pcase-let ((`(,diff-buffer ,diff-buffer-with-line) (indent-lint stdin-buf)))
       (when file-name
         (with-current-buffer diff-buffer
           (let ((inhibit-read-only t))
