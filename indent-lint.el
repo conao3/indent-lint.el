@@ -65,7 +65,10 @@ If omit BUF, lint `current-buffer'."
       (funcall mode)
       (indent-region (point-min) (point-max))
       (diff-no-select buf (current-buffer)
-                      nil nil diff-buffer))))
+                   nil nil diff-buffer))
+    (unless (eq 0 indent-lint-exit-code)
+      (display-buffer diff-buffer))
+    diff-buffer))
 
 ;;;###autoload
 (defun indent-lint-setup ()
