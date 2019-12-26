@@ -36,6 +36,10 @@
   :group 'tools
   :link '(url-link :tag "Github" "https://github.com/conao3/indent-lint.el"))
 
+(defcustom indent-lint-before-indent-fn #'ignore
+  "The function to eval before indent.
+Function will be called with 2 variables; `(,raw-buffer ,indent-buffer).")
+
 (defvar indent-lint-exit-code nil
   "Diff exit code.")
 
@@ -69,6 +73,7 @@ If omit BUF, lint `current-buffer'."
       (insert contents)
       (let ((buffer-file-name (buffer-name buf*)))
         (normal-mode)
+        (funcall indent-lint-before-indent-fn buf* (current-buffer))
         (indent-region (point-min) (point-max)))
       (diff-no-select buf* (current-buffer)
                       nil 'no-async diff-buffer)

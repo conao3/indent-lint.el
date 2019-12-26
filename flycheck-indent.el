@@ -42,6 +42,11 @@
    '(progn
       (package-initialize)
       (require 'indent-lint)
+      (setq indent-lint-before-indent-fn
+            (lambda (_raw-buffer _indent-buffer)
+              (with-current-buffer raw-buffer
+                (ignore-errors
+                  (eval-buffer)))))
       (indent-lint-batch))))
 
 (flycheck-define-checker indent-elisp
@@ -49,12 +54,20 @@
   :command ("emacs"
             (eval flycheck-emacs-args)
             "-L" "."
+            (option "--eval" flycheck-emacs-lisp-package-user-dir nil
+                    flycheck-option-emacs-lisp-package-user-dir)
+            (option "--eval" flycheck-emacs-lisp-initialize-packages nil
+                    flycheck-option-emacs-lisp-package-initialize)
             "--eval" (eval flycheck-indent-run-sexp-str)
             (eval (buffer-name (current-buffer))))
   :standard-input t
   :error-patterns
   ((warning (file-name) ":" line ": warning: " (message)))
   :modes emacs-lisp-mode)
+
+(dolist (checker '(indent-elisp))
+  (setf (car (flycheck-checker-get checker 'command))
+        flycheck-this-emacs-executable))
 
 ;;;###autoload
 (defun flycheck-indent-setup ()
