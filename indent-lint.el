@@ -40,6 +40,10 @@
 (defvar indent-lint-exit-code nil
   "Diff exit code.")
 
+(defvar indent-lint-initialized nil
+  "Non-nil means initialized `indent-lint'.
+See `indent-lint-setup' and `indent-lint-teardown'.")
+
 (defvar indent-lint-advice-alist
   '((diff-sentinel . indent-lint-advice--diff-sentinel))
   "Alist for indent-lint advice.
@@ -55,6 +59,8 @@ FN is `diff-sentinel', ARGS is its arguments."
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
   (interactive)
+  (when (not indent-lint-initialized)
+    (error "Initialize `indent-lint' needed.  Eval `indent-lint-setup' before using this"))
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
@@ -86,6 +92,7 @@ If omit BUF, lint `current-buffer'."
 (defun indent-lint-setup ()
   "Setup indent-lint."
   (interactive)
+  (setq indent-lint-initialized t)
   (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
     (advice-add sym :around fn)))
 
@@ -93,6 +100,7 @@ If omit BUF, lint `current-buffer'."
 (defun indent-lint-teardown ()
   "Setup indent-lint."
   (interactive)
+  (setq indent-lint-initialized nil)
   (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
     (advice-remove sym fn)))
 
