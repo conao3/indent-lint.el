@@ -73,8 +73,8 @@
 (defun flycheck-indent-setup ()
   "Setup Flycheck Indent."
   (interactive)
-  (add-to-list 'flycheck-checkers 'indent-elisp t)
-  (flycheck-add-next-checker 'emacs-lisp 'indent-elisp))
+  (add-to-list 'flycheck-checkers 'indent-elisp 'append)
+  (flycheck-add-next-checker 'emacs-lisp 'indent-elisp 'append))
 
 (provide 'flycheck-indent)
 
