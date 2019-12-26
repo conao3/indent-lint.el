@@ -76,7 +76,7 @@ If omit BUF, lint `current-buffer'."
       (diff-no-select buf* (current-buffer)
                       nil 'no-async diff-buffer)
       (diff-no-select buf* (current-buffer)
-                      '("--old-line-format=\"<%dn< %L\""
+                      '("--old-line-format=\"# %dn\""
                         "--new-line-format=\"\""
                         "--unchanged-line-format=\"\"")
                       'no-async diff-buffer-with-line))
