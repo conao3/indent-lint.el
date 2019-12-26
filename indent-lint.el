@@ -73,8 +73,13 @@ If omit BUF, lint `current-buffer'."
                         "--new-line-format=\"\""
                         "--unchanged-line-format=\"\"")
                       nil diff-buffer-with-line))
-    (unless (eq 0 indent-lint-exit-code)
+    (cond
+     ((eq 0 indent-lint-exit-code))
+     ((eq 1 indent-lint-exit-code)
       (display-buffer diff-buffer))
+     ((eq 2 indent-lint-exit-code)
+      (display-buffer diff-buffer)
+      (error "Diff error")))
     `(,diff-buffer ,diff-buffer-with-line)))
 
 ;;;###autoload
