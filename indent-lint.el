@@ -65,14 +65,13 @@ If omit BUF, lint `current-buffer'."
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
-         (mode (with-current-buffer buf*
-                 major-mode))
          (diff-buffer (get-buffer-create "*indent-lint diff*"))
          (diff-buffer-with-line (get-buffer-create "*indent-lint diff with line*")))
     (with-temp-buffer
       (insert contents)
-      (funcall mode)
-      (indent-region (point-min) (point-max))
+      (let ((buffer-file-name (buffer-name buf*)))
+        (normal-mode)
+        (indent-region (point-min) (point-max)))
       (diff-no-select buf* (current-buffer)
                       nil 'no-async diff-buffer)
       (diff-no-select buf* (current-buffer)
@@ -132,8 +131,7 @@ Usage:
     (with-current-buffer stdin-buf
       (when (and file-name (equal "" (buffer-string)))
         (insert-file-contents file-name))
-      (let ((buffer-file-name (or file-name "*stdin*")))
-        (normal-mode t)))
+      (rename-buffer (or file-name "*stdin*")))
     (seq-let (diff-buffer diff-buffer-with-line) (indent-lint stdin-buf)
       (when file-name
         (with-current-buffer diff-buffer
