@@ -73,7 +73,8 @@ If omit BUF, lint `current-buffer'."
       (diff-no-select buf* (current-buffer)
                       nil 'no-async diff-buffer)
       (diff-no-select buf* (current-buffer)
-                      '("--old-line-format=\"# Indent mismatch: %dn\n\""
+                      `(,(format "--old-line-format=\"%s:%%dn: warning: Indent mismatch\n\""
+                                 (buffer-name buf*))
                         "--new-line-format=\"\""
                         "--unchanged-line-format=\"\"")
                       'no-async diff-buffer-with-line))
