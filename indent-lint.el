@@ -38,7 +38,9 @@
 
 (defcustom indent-lint-before-indent-fn #'ignore
   "The function to eval before indent.
-Function will be called with 2 variables; `(,raw-buffer ,indent-buffer).")
+Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
+  :group 'indent-lint
+  :type 'function)
 
 (defconst indent-lint-directory (eval-and-compile
                                   (file-name-directory
@@ -70,7 +72,7 @@ FN is `diff-sentinel', ARGS is its arguments."
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
   (interactive)
-  (when (not indent-lint-initialized)
+  (unless indent-lint-initialized
     (error "Initialize `indent-lint' needed.  Eval `indent-lint-setup' before using this"))
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
@@ -98,7 +100,7 @@ If omit BUF, lint `current-buffer'."
     diff-buffer))
 
 (defun indent-lint--output-debug-info (err)
-  "Output debug info."
+  "Output debug info form ERR."
   (let ((file (locate-user-emacs-file "flycheck-indent.debug")))
     (with-temp-file file
       (erase-buffer)
