@@ -83,7 +83,7 @@
   (add-to-list 'flycheck-checkers 'indent-elisp 'append)
   (flycheck-add-next-checker 'emacs-lisp 'indent-elisp 'append)
   (flycheck-add-next-checker 'emacs-lisp-checkdoc 'indent-elisp 'append)
-  (eval-after-load 'flycheck-package
+  (with-eval-after-load 'flycheck-package
     (flycheck-add-next-checker 'emacs-lisp-package 'indent-elisp 'append)))
 
 (provide 'flycheck-indent)
