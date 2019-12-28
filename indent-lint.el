@@ -157,14 +157,6 @@ Usage:
             (insert-file-contents file-name))
           (rename-buffer (or file-name "*stdin*")))
         (let ((diff-buffer (indent-lint stdin-buf)))
-          (when file-name
-            (with-current-buffer diff-buffer
-              (let ((inhibit-read-only t))
-                (save-excursion
-                  (goto-char (point-min))
-                  (ignore-errors
-                    (while (search-forward "#<buffer  *temp*>")
-                      (replace-match (format "%s" file-name))))))))
           (cond
            ((eq 0 indent-lint-exit-code))
            ((eq 1 indent-lint-exit-code)
