@@ -77,7 +77,17 @@ If omit BUF, lint `current-buffer'."
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
-         (diff-buffer (get-buffer-create "*indent-lint diff*")))
+         (diff-buffer (get-buffer-create "*indent-lint diff*"))
+         (parse-error (lambda ()
+                        (let (errors)
+                          (while (re-search-forward
+                                  (rx line-start (*? any) ":" (* num) ": warning: ")
+                                  nil 'noerror)
+                            (push (buffer-substring-no-properties
+                                   (line-beginning-position)
+                                   (line-end-position))
+                                  errors))
+                          (nreverse errors)))))
     (with-temp-buffer
       (insert contents)
       (let ((buffer-file-name (buffer-name buf*)))
@@ -97,7 +107,12 @@ If omit BUF, lint `current-buffer'."
      ((eq 2 indent-lint-exit-code)
       (display-buffer diff-buffer)
       (error "Diff error")))
-    diff-buffer))
+    (with-current-buffer diff-buffer
+      (goto-char (point-min))
+      (let ((inhibit-read-only t))
+        (dolist (err (prog1 (funcall parse-error) (erase-buffer)))
+          (insert (format "%s\n" err))))
+      (current-buffer))))
 
 (defun indent-lint--output-debug-info (err)
   "Output debug info form ERR."
