@@ -73,7 +73,7 @@ FN is `diff-sentinel', ARGS is its arguments."
 If omit BUF, lint `current-buffer'."
   (interactive)
   (unless indent-lint-initialized
-    (error "Initialize `indent-lint' needed.  Eval `indent-lint-setup' before using this"))
+    (indent-lint-setup))
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
