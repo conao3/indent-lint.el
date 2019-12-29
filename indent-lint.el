@@ -76,8 +76,7 @@ FN is `diff-sentinel', ARGS is its arguments."
   (setq indent-lint-exit-code (nth 0 args))
   (apply fn args))
 
-;;;###autoload
-(defun indent-lint (&optional buf)
+(defun indent-lint--sync (&optional buf)
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
   (interactive)
@@ -147,7 +146,7 @@ If omit BUF, lint `current-buffer'."
     buf))
 
 (defun indent-lint-batch ()
-  "Run `indent-lint' and output diff to standard output.
+  "Run `indent-lint--sync' and output diff to standard output.
 Use this only with --batch, it won't work interactively.
 
 Extra argument; FILENAME is needed to guess `major-mode' to indent.
@@ -180,7 +179,7 @@ Usage:
           (when (and file-name (equal "" (buffer-string)))
             (insert-file-contents file-name))
           (rename-buffer (or file-name "*stdin*")))
-        (let ((diff-buffer (indent-lint stdin-buf)))
+        (let ((diff-buffer (indent-lint--sync stdin-buf)))
           (cond
            ((eq 0 indent-lint-exit-code))
            ((eq 1 indent-lint-exit-code)
