@@ -68,6 +68,7 @@ FN is `diff-sentinel', ARGS is its arguments."
   (setq indent-lint-exit-code (nth 0 args))
   (apply fn args))
 
+;;;###autoload
 (defun indent-lint (&optional buf)
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
