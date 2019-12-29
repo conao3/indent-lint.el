@@ -190,6 +190,48 @@ Usage:
     (error
      (indent-lint--output-debug-info err))))
 
+(defun indent-lint--sentinel (proc _event)
+  "Process sentinel for `indent-lint'.
+PROC is Emacs process."
+  (let ((inhibit-read-only t)
+        (buf (process-buffer proc))
+        (code (process-exit-status proc)))
+    (with-current-buffer buf
+      (insert (format "\nDiff finished%s.  %s\n"
+                      (cond ((equal 0 code) " (no differences)")
+                            ((equal 2 code) " (diff error)")
+                            (t ""))
+                      (current-time-string)))
+      (goto-char (point-min))
+      (display-buffer buf))))
+
+(defun indent-lint (&optional buf)
+  "Indent lint for BUF."
+  (interactive)
+  (let* ((buf* (get-buffer (or buf (current-buffer))))
+         (sexp '(progn
+                  (require 'indent-lint)
+                  (let ((inhibit-message t))
+                    (with-current-buffer
+                        (indent-lint--sync
+                         (indent-lint--get-stdin-buffer))
+                      (princ (format "%s\n" (buffer-string)))))
+                  (kill-emacs indent-lint-exit-code)))
+         (proc (make-process
+                :name "indent-lint"
+                :buffer (generate-new-buffer "*indent-lint*")
+                :command
+                (list (concat invocation-directory invocation-name)
+                      "-Q" "--batch"
+                      "-L" indent-lint-directory
+                      "--eval" (indent-lint--sexp-to-string sexp))
+                :sentinel 'indent-lint--sentinel)))
+
+    (with-current-buffer buf*
+      (process-send-region proc (point-min) (point-max)))
+
+    (process-send-eof proc)))
+
 ;;;###autoload
 (defun indent-lint-setup ()
   "Setup indent-lint."
