@@ -57,6 +57,14 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   "Non-nil means initialized `indent-lint'.
 See `indent-lint-setup' and `indent-lint-teardown'.")
 
+(defun indent-lint--sexp-to-string (sexp)
+  "Convert SEXP to a string.
+Same as `flycheck-sexp-to-string'."
+  (let ((print-quoted t)
+        (print-length nil)
+        (print-level nil))
+    (prin1-to-string sexp)))
+
 (defvar indent-lint-advice-alist
   '((diff-sentinel . indent-lint-advice--diff-sentinel))
   "Alist for indent-lint advice.
