@@ -199,8 +199,9 @@ PROC is Emacs process."
     (with-current-buffer buf
       (insert (format "\nDiff finished%s.  %s\n"
                       (cond ((equal 0 code) " (no differences)")
+                            ((equal 1 code) " (has differences)")
                             ((equal 2 code) " (diff error)")
-                            (t ""))
+                            (t (format "(unknown exit code: %d)" code)))
                       (current-time-string)))
       (goto-char (point-min))
       (special-mode)
