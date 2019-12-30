@@ -203,6 +203,7 @@ PROC is Emacs process."
                             (t ""))
                       (current-time-string)))
       (goto-char (point-min))
+      (special-mode)
       (display-buffer buf))))
 
 (defun indent-lint (&optional buf)
