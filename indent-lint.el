@@ -229,15 +229,17 @@ PROC is Emacs process."
                          (with-current-buffer (indent-lint--sync stdin-buf)
                            (princ (format "%s\n" (buffer-string)))))
                        (kill-emacs indent-lint-exit-code)))
+         (cmd (mapconcat #'shell-quote-argument
+                         (list (concat invocation-directory invocation-name)
+                               "-Q" "--batch"
+                               "-L" indent-lint-directory
+                               "--eval" (indent-lint--sexp-to-string pkg-sexp)
+                               "--eval" (indent-lint--sexp-to-string lint-sexp))
+                         " "))
          (proc (make-process
                 :name "indent-lint"
                 :buffer (generate-new-buffer "*indent-lint*")
-                :command
-                (list (concat invocation-directory invocation-name)
-                      "-Q" "--batch"
-                      "-L" indent-lint-directory
-                      "--eval" (indent-lint--sexp-to-string pkg-sexp)
-                      "--eval" (indent-lint--sexp-to-string lint-sexp))
+                :command (list shell-file-name shell-command-switch cmd)
                 :sentinel 'indent-lint--sentinel)))
 
     (with-current-buffer buf*
