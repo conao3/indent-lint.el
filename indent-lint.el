@@ -211,17 +211,22 @@ PROC is Emacs process."
   (let* ((buf*     (get-buffer (or buf (current-buffer))))
          (buf-name (buffer-name buf*))
          (mode     (with-current-buffer buf* major-mode))
-         (sexp `(progn
-                  (require 'indent-lint)
-                  (let ((inhibit-message t)
-                        (stdin-buf (indent-lint--get-stdin-buffer)))
-                    (with-current-buffer stdin-buf
-                      (rename-buffer ,buf-name 'unique)
-                      (ignore-errors
-                        (funcall #',mode)))
-                    (with-current-buffer (indent-lint--sync stdin-buf)
-                      (princ (format "%s\n" (buffer-string)))))
-                  (kill-emacs indent-lint-exit-code)))
+         (pkg-sexp  `(progn
+                       (setq user-emacs-directory ,user-emacs-directory)
+                       (setq package-user-dir ,package-user-dir)
+                       (require 'package)
+                       (package-initialize)))
+         (lint-sexp `(progn
+                       (require 'indent-lint)
+                       (let ((inhibit-message t)
+                             (stdin-buf (indent-lint--get-stdin-buffer)))
+                         (with-current-buffer stdin-buf
+                           (rename-buffer ,buf-name 'unique)
+                           (ignore-errors
+                             (funcall #',mode)))
+                         (with-current-buffer (indent-lint--sync stdin-buf)
+                           (princ (format "%s\n" (buffer-string)))))
+                       (kill-emacs indent-lint-exit-code)))
          (proc (make-process
                 :name "indent-lint"
                 :buffer (generate-new-buffer "*indent-lint*")
@@ -229,7 +234,8 @@ PROC is Emacs process."
                 (list (concat invocation-directory invocation-name)
                       "-Q" "--batch"
                       "-L" indent-lint-directory
-                      "--eval" (indent-lint--sexp-to-string sexp))
+                      "--eval" (indent-lint--sexp-to-string pkg-sexp)
+                      "--eval" (indent-lint--sexp-to-string lint-sexp))
                 :sentinel 'indent-lint--sentinel)))
 
     (with-current-buffer buf*
