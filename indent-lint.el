@@ -208,13 +208,18 @@ PROC is Emacs process."
 (defun indent-lint (&optional buf)
   "Indent lint for BUF."
   (interactive)
-  (let* ((buf* (get-buffer (or buf (current-buffer))))
-         (sexp '(progn
+  (let* ((buf*     (get-buffer (or buf (current-buffer))))
+         (buf-name (buffer-name buf*))
+         (mode     (with-current-buffer buf* major-mode))
+         (sexp `(progn
                   (require 'indent-lint)
-                  (let ((inhibit-message t))
-                    (with-current-buffer
-                        (indent-lint--sync
-                         (indent-lint--get-stdin-buffer))
+                  (let ((inhibit-message t)
+                        (stdin-buf (indent-lint--get-stdin-buffer)))
+                    (with-current-buffer stdin-buf
+                      (rename-buffer ,buf-name 'unique)
+                      (ignore-errors
+                        (funcall #',mode)))
+                    (with-current-buffer (indent-lint--sync stdin-buf)
                       (princ (format "%s\n" (buffer-string)))))
                   (kill-emacs indent-lint-exit-code)))
          (proc (make-process
