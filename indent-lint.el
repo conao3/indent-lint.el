@@ -81,8 +81,10 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
          (package-initialize)
          (with-temp-file ,dest-file
            (insert-file-contents ,src-file)
-           (funcall #',(with-current-buffer buf major-mode))
-           (indent-region (point-min) (point-max))))))
+           (let ((buffer-file-name ,(buffer-name buf)))
+             (normal-mode)
+             (funcall #',(with-current-buffer buf major-mode))
+             (indent-region (point-min) (point-max)))))))
    (lambda (res)
      (promise-resolve res))
    (lambda (reason)
