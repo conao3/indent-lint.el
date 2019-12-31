@@ -171,7 +171,7 @@ Usage:
           (when (and file-name (equal "" (buffer-string)))
             (insert-file-contents file-name))
           (rename-buffer (or file-name "*stdin*")))
-        (let ((diff-buffer (indent-lint--sync stdin-buf)))
+        (let ((diff-buffer (indent-lint stdin-buf)))
           (cond
            ((eq 0 indent-lint-exit-code))
            ((eq 1 indent-lint-exit-code)
