@@ -68,54 +68,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                 (backtrace))))
     (message (format "Indent-lint exit with errors. See %s" file))))
 
-(defun indent-lint-batch ()
-  "Run `indent-lint--sync' and output diff to standard output.
-Use this only with --batch, it won't work interactively.
-
-Extra argument; FILENAME is needed to guess `major-mode' to indent.
-
-Status code:
-  0 - No indentation errors and no output
-  1 - Found indentation errors and diff output
-  2 - Diff program exit with errors
-
-Usage:
-  - Import code from stdin and guess `major-mode' from header or footer.
-      cat sample.el | \
-        {EMACS} -Q -l indent-lint.el -f indent-lint-batch
-
-  - Import code from stdin and guess `major-mode' from file extension.
-      cat sample.el | \
-        {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el
-
-  - Import code from file and guess `major-mode' from file extension.
-    (Sending EOF is needed after Emacs run)
-      {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el"
-  (unless noninteractive
-    (error "`indent-lint-batch' can be used only with --batch"))
-  (condition-case err
-      (let* ((stdin-buffer
-              (lambda ()
-                (let ((read-line (lambda () (read-string "")))
-                      (buf (get-buffer-create "*stdin*"))
-                      line)
-                  (with-current-buffer buf
-                    (ignore-errors
-                      (while (setq line (funcall read-line))
-                        (insert line "\n"))))
-                  buf)))
-             (stdin-buf (funcall stdin-buffer))
-             (file-name (nth 0 command-line-args-left)))
-        (with-current-buffer stdin-buf
-          (when (and file-name (equal "" (buffer-string)))
-            (insert-file-contents file-name))
-          (rename-buffer (or file-name "*stdin*")))
-        (let ((diff-buffer (indent-lint stdin-buf)))
-          (princ (with-current-buffer diff-buffer (buffer-string)))
-          (kill-emacs 0)))
-    (error
-     (indent-lint--output-debug-info err))))
-
 (defun indent-lint--promise-indent (buf src-file dest-file)
   "Renturn promise to save BUF to SRC-FILE and save DEST-FILE indented."
   (with-temp-file src-file
@@ -227,6 +179,54 @@ Usage:
                 (prin1-to-string buf*)
                 src-file dest-file
                 (prin1-to-string reason))))))))
+
+(defun indent-lint-batch ()
+  "Run `indent-lint--sync' and output diff to standard output.
+Use this only with --batch, it won't work interactively.
+
+Extra argument; FILENAME is needed to guess `major-mode' to indent.
+
+Status code:
+  0 - No indentation errors and no output
+  1 - Found indentation errors and diff output
+  2 - Diff program exit with errors
+
+Usage:
+  - Import code from stdin and guess `major-mode' from header or footer.
+      cat sample.el | \
+        {EMACS} -Q -l indent-lint.el -f indent-lint-batch
+
+  - Import code from stdin and guess `major-mode' from file extension.
+      cat sample.el | \
+        {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el
+
+  - Import code from file and guess `major-mode' from file extension.
+    (Sending EOF is needed after Emacs run)
+      {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el"
+  (unless noninteractive
+    (error "`indent-lint-batch' can be used only with --batch"))
+  (condition-case err
+      (let* ((stdin-buffer
+              (lambda ()
+                (let ((read-line (lambda () (read-string "")))
+                      (buf (get-buffer-create "*stdin*"))
+                      line)
+                  (with-current-buffer buf
+                    (ignore-errors
+                      (while (setq line (funcall read-line))
+                        (insert line "\n"))))
+                  buf)))
+             (stdin-buf (funcall stdin-buffer))
+             (file-name (nth 0 command-line-args-left)))
+        (with-current-buffer stdin-buf
+          (when (and file-name (equal "" (buffer-string)))
+            (insert-file-contents file-name))
+          (rename-buffer (or file-name "*stdin*")))
+        (let ((diff-buffer (indent-lint stdin-buf)))
+          (princ (with-current-buffer diff-buffer (buffer-string)))
+          (kill-emacs 0)))
+    (error
+     (indent-lint--output-debug-info err))))
 
 (provide 'indent-lint)
 
