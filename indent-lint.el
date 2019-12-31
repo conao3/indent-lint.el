@@ -68,17 +68,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                 (backtrace))))
     (message (format "Indent-lint exit with errors. See %s" file))))
 
-(defun indent-lint--get-stdin-buffer ()
-  "Get stdin string until EOF and return its buffer."
-  (let ((read-line (lambda () (read-string "")))
-        (buf (get-buffer-create "*stdin*"))
-        line)
-    (with-current-buffer buf
-      (ignore-errors
-        (while (setq line (funcall read-line))
-          (insert line "\n"))))
-    buf))
-
 (defun indent-lint-batch ()
   "Run `indent-lint--sync' and output diff to standard output.
 Use this only with --batch, it won't work interactively.
@@ -105,9 +94,18 @@ Usage:
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (condition-case err
-      (let ((inhibit-message t)
-            (stdin-buf (indent-lint--get-stdin-buffer))
-            (file-name (nth 0 command-line-args-left)))
+      (let* ((stdin-buffer
+              (lambda ()
+                (let ((read-line (lambda () (read-string "")))
+                      (buf (get-buffer-create "*stdin*"))
+                      line)
+                  (with-current-buffer buf
+                    (ignore-errors
+                      (while (setq line (funcall read-line))
+                        (insert line "\n"))))
+                  buf)))
+             (stdin-buf (funcall stdin-buffer))
+             (file-name (nth 0 command-line-args-left)))
         (with-current-buffer stdin-buf
           (when (and file-name (equal "" (buffer-string)))
             (insert-file-contents file-name))
