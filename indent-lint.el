@@ -5,7 +5,7 @@
 ;; Author: Naoya Yamashita <conao3@gmail.com>
 ;; Version: 0.0.1
 ;; Keywords: tools
-;; Package-Requires: ((emacs "25.1"))
+;; Package-Requires: ((emacs "24.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -237,7 +237,7 @@ PROC is Emacs process."
                                "--eval" (indent-lint--sexp-to-string pkg-sexp)
                                "--eval" (indent-lint--sexp-to-string lint-sexp))
                          " ")))
-    (if async
+    (if (and async (fboundp 'make-process))
         (let ((proc (make-process
                      :name "indent-lint"
                      :buffer proc-buf
