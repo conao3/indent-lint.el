@@ -5,7 +5,7 @@
 ;; Author: Naoya Yamashita <conao3@gmail.com>
 ;; Version: 0.0.1
 ;; Keywords: tools
-;; Package-Requires: ((emacs "24.4"))
+;; Package-Requires: ((emacs "25.1") (async-await "1.0"))
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,8 @@
 
 ;;; Code:
 
-(require 'diff)
+(require 'seq)
+(require 'async-await)
 
 (defgroup indent-lint nil
   "Asynchronous indentation checker"
@@ -54,38 +55,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                                        load-file-name
                                        (buffer-file-name))))
   "Path to indent-lint root.")
-
-(defun indent-lint--sexp-to-string (sexp)
-  "Convert SEXP to a string.
-Same as `flycheck-sexp-to-string'."
-  (let ((print-quoted t)
-        (print-length nil)
-        (print-level nil))
-    (prin1-to-string sexp)))
-
-(defun indent-lint--sync (&optional buf)
-  "Indent lint for BUF.
-If omit BUF, lint `current-buffer'."
-  (interactive)
-  (let* ((buf* (or buf (current-buffer)))
-         (contents (with-current-buffer buf*
-                     (buffer-string)))
-         (diff-buffer (get-buffer-create "*indent-lint diff*")))
-    (with-temp-buffer
-      (insert contents)
-      (let ((buffer-file-name (buffer-name buf*)))
-        (normal-mode)
-        (funcall indent-lint-before-indent-fn buf* (current-buffer))
-        (indent-region (point-min) (point-max)))
-      (diff-no-select buf* (current-buffer)
-                      `(,(format "--old-line-format=\"%s:%%dn: warning: Indent mismatch\n\""
-                                 (buffer-name buf*))
-                        ,(if indent-lint-verbose
-                             "--new-line-format=\"%L\""
-                           "--new-line-format=\"\"")
-                        "--unchanged-line-format=\"\"")
-                      'no-async diff-buffer))
-    diff-buffer))
 
 (defun indent-lint--output-debug-info (err)
   "Output debug info form ERR."
@@ -149,73 +118,117 @@ Usage:
     (error
      (indent-lint--output-debug-info err))))
 
-(defun indent-lint--sentinel (code proc-buf)
-  "Process sentinel for `indent-lint'.
-CODE is exit code for child process worked in PROC-BUF."
-  (let ((inhibit-read-only t))
-    (with-current-buffer proc-buf
-      (insert (format "\nDiff finished%s.  %s\n"
-                      (cond ((equal 0 code) " (no differences)")
-                            ((equal 1 code) " (has differences)")
-                            ((equal 2 code) " (diff error)")
-                            (t (format "(unknown exit code: %d)" code)))
-                      (current-time-string)))
-      (goto-char (point-min))
-      (special-mode)
-      (display-buffer proc-buf))))
+(defun indent-lint--promise-indent (buf src-file dest-file)
+  "Renturn promise to save BUF to SRC-FILE and save DEST-FILE indented."
+  (with-temp-file src-file
+    (insert (with-current-buffer buf (buffer-string))))
+  (promise-then
+   (promise:async-start
+    `(lambda ()
+       (progn
+         (setq user-emacs-directory ,user-emacs-directory)
+         (setq package-user-dir ,package-user-dir)
+         (package-initialize)
+         (with-temp-file ,dest-file
+           (insert-file-contents ,src-file)
+           (funcall #',(with-current-buffer buf major-mode))
+           (indent-region (point-min) (point-max))))))
+   (lambda (res)
+     (promise-resolve res))
+   (lambda (reason)
+     (promise-reject `(fail-indent ,reason)))))
+
+(defun indent-lint--promise-diff (buf src-file dest-file)
+  "Return promise to diff SRC-FILE and DEST-FILE named BUF."
+  (let ((exitcode (lambda (str)
+                    (when (stringp str)
+                      (let ((reg "exited abnormally with code \\([[:digit:]]*\\)\n"))
+                        (if (string-match reg str)
+                            (string-to-number (match-string 1 str))
+                          nil))))))
+    (promise-then
+     (promise:make-process
+      shell-file-name
+      shell-command-switch
+      (mapconcat
+       #'shell-quote-argument
+       `("diff"
+         "--old-line-format"
+         ,(if indent-lint-verbose
+              (format "%s:%%dn: warning: Indent mismatch\n-%%L" (buffer-name buf))
+            (format "%s:%%dn: warning: Indent mismatch\n" (buffer-name buf)))
+         "--new-line-format" ,(if indent-lint-verbose "+%L" "")
+         "--unchanged-line-format" ""
+         ,src-file
+         ,dest-file)
+       " "))
+     (lambda (res)
+       (seq-let (stdin stdout) res
+         (let ((code 0)
+               (output (concat stdin stdout)))
+           (promise-resolve `(,code ,output)))))
+     (lambda (res)
+       (seq-let (msg stdin stdout) res
+         (let ((code (funcall exitcode msg))
+               (output (concat stdin stdout)))
+           (cond
+            ((eq code 1)
+             (promise-resolve `(,code ,output)))
+            ((eq code 2)
+             (promise-reject `(fail-diff ,output)))
+            (t
+             (promise-reject `(fail-diff-unknown ,output))))))))))
 
 ;;;###autoload
-(defun indent-lint (&optional buf async)
-  "Indent lint for BUF async if ASYNC is non-nil."
-  (interactive (list nil t))
-  (let* ((buf*     (get-buffer (or buf (current-buffer))))
-         (buf-name (buffer-name buf*))
-         (proc-buf (generate-new-buffer "*indent-lint*"))
-         (mode     (with-current-buffer buf* major-mode))
-         (pkg-sexp  `(progn
-                       (setq user-emacs-directory ,user-emacs-directory)
-                       (setq package-user-dir ,package-user-dir)
-                       (require 'package)
-                       (package-initialize)))
-         (lint-sexp `(progn
-                       (require 'indent-lint)
-                       (let ((inhibit-message t)
-                             (stdin-buf (indent-lint--get-stdin-buffer))
-                             (indent-lint-verbose ,indent-lint-verbose))
-                         (with-current-buffer stdin-buf
-                           (rename-buffer ,buf-name 'unique)
-                           (ignore-errors
-                             (funcall #',mode)))
-                         (with-current-buffer (indent-lint--sync stdin-buf)
-                           (princ (format "%s\n" (buffer-string)))))
-                       (kill-emacs 0)))
-         (cmd (mapconcat #'shell-quote-argument
-                         (list (concat invocation-directory invocation-name)
-                               "-Q" "--batch"
-                               "-L" indent-lint-directory
-                               "--eval" (indent-lint--sexp-to-string pkg-sexp)
-                               "--eval" (indent-lint--sexp-to-string lint-sexp))
-                         " ")))
-    (if (and async (fboundp 'make-process))
-        (let ((proc (make-process
-                     :name "indent-lint"
-                     :buffer proc-buf
-                     :command (list shell-file-name shell-command-switch cmd)
-                     :sentinel (lambda (proc _event)
-                                 (indent-lint--sentinel
-                                  (process-exit-status proc)
-                                  (process-buffer proc))))))
-          (with-current-buffer buf*
-            (process-send-region proc (point-min) (point-max)))
-          (process-send-eof proc))
-      (let ((filepath (make-temp-file "emacs--indent-lint")))
-        (with-temp-file filepath
-          (insert (with-current-buffer buf* (buffer-string))))
-        (indent-lint--sentinel
-         (call-process shell-file-name filepath proc-buf nil
-                       shell-command-switch cmd)
-         proc-buf)))
-    proc-buf))
+(async-defun indent-lint (&optional buf)
+  "Indent BUF in clean Emacs and lint async."
+  (interactive)
+  (let ((buf* (get-buffer (or buf (current-buffer))))
+        (src-file   (make-temp-file "emacs-indent-lint"))
+        (dest-file  (make-temp-file "emacs-indent-lint")))
+    (condition-case err
+        (let* ((res (await (indent-lint--promise-indent buf* src-file dest-file)))
+               (res (await (indent-lint--promise-diff buf* src-file dest-file))))
+          (ignore-errors
+            (delete-file src-file)
+            (delete-file dest-file))
+          (with-current-buffer (generate-new-buffer "*indent-lint*")
+            (seq-let (code output) res
+              (insert output)
+              (insert
+               (format "\nDiff finished%s.  %s\n"
+                       (cond ((equal 0 code) " (no differences)")
+                             ((equal 1 code) " (has differences)")
+                             ((equal 2 code) " (diff error)")
+                             (t (format "(unknown exit code: %d)" code)))
+                       (current-time-string)))
+              (special-mode)
+              (diff-mode)
+              (display-buffer (current-buffer))
+              (current-buffer))))
+      (error
+       (pcase err
+         (`(error (fail-indent ,reason))
+          (warn "Fail indent
+  buffer: %s\n  major-mode: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
+                (prin1-to-string buf*)
+                (with-current-buffer buf* major-mode)
+                src-file dest-file
+                (prin1-to-string reason)))
+
+         (`(error (fail-diff ,reason))
+          (warn "Fail diff.
+  buffer: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
+                (prin1-to-string buf*)
+                src-file dest-file
+                (prin1-to-string reason)))
+
+         (`(error (fail-diff-unknown ,reason))
+          (warn "Fail diff unknown.
+  buffer: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
+                (prin1-to-string buf*)
+                src-file dest-file
+                (prin1-to-string reason))))))))
 
 (provide 'indent-lint)
 
