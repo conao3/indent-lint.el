@@ -55,13 +55,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                                        (buffer-file-name))))
   "Path to indent-lint root.")
 
-(defvar indent-lint-exit-code nil
-  "Diff exit code.")
-
-(defvar indent-lint-initialized nil
-  "Non-nil means initialized `indent-lint'.
-See `indent-lint-setup' and `indent-lint-teardown'.")
-
 (defun indent-lint--sexp-to-string (sexp)
   "Convert SEXP to a string.
 Same as `flycheck-sexp-to-string'."
@@ -70,23 +63,10 @@ Same as `flycheck-sexp-to-string'."
         (print-level nil))
     (prin1-to-string sexp)))
 
-(defvar indent-lint-advice-alist
-  '((diff-sentinel . indent-lint-advice--diff-sentinel))
-  "Alist for indent-lint advice.
-See `indent-lint-setup' and `indent-lint-teardown'.")
-
-(defun indent-lint-advice--diff-sentinel (fn &rest args)
-  "Advice for `diff-sentinel'.
-FN is `diff-sentinel', ARGS is its arguments."
-  (setq indent-lint-exit-code (nth 0 args))
-  (apply fn args))
-
 (defun indent-lint--sync (&optional buf)
   "Indent lint for BUF.
 If omit BUF, lint `current-buffer'."
   (interactive)
-  (unless indent-lint-initialized
-    (indent-lint-setup))
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
@@ -105,13 +85,6 @@ If omit BUF, lint `current-buffer'."
                            "--new-line-format=\"\"")
                         "--unchanged-line-format=\"\"")
                       'no-async diff-buffer))
-    (cond
-      ((eq 0 indent-lint-exit-code))
-     ((eq 1 indent-lint-exit-code)
-      (display-buffer diff-buffer))
-     ((eq 2 indent-lint-exit-code)
-      (display-buffer diff-buffer)
-      (error "Diff error")))
     diff-buffer))
 
 (defun indent-lint--output-debug-info (err)
@@ -162,7 +135,6 @@ Usage:
       {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
-  (indent-lint-setup)
   (condition-case err
       (let ((inhibit-message t)
             (stdin-buf (indent-lint--get-stdin-buffer))
@@ -172,13 +144,8 @@ Usage:
             (insert-file-contents file-name))
           (rename-buffer (or file-name "*stdin*")))
         (let ((diff-buffer (indent-lint stdin-buf)))
-          (cond
-           ((eq 0 indent-lint-exit-code))
-           ((eq 1 indent-lint-exit-code)
-            (princ (with-current-buffer diff-buffer (buffer-string))))
-           ((eq 2 indent-lint-exit-code)
-            (princ (with-current-buffer diff-buffer (buffer-string)))))
-          (kill-emacs indent-lint-exit-code)))
+          (princ (with-current-buffer diff-buffer (buffer-string)))
+          (kill-emacs 0)))
     (error
      (indent-lint--output-debug-info err))))
 
@@ -221,7 +188,7 @@ CODE is exit code for child process worked in PROC-BUF."
                              (funcall #',mode)))
                          (with-current-buffer (indent-lint--sync stdin-buf)
                            (princ (format "%s\n" (buffer-string)))))
-                       (kill-emacs indent-lint-exit-code)))
+                       (kill-emacs 0)))
          (cmd (mapconcat #'shell-quote-argument
                          (list (concat invocation-directory invocation-name)
                                "-Q" "--batch"
@@ -249,22 +216,6 @@ CODE is exit code for child process worked in PROC-BUF."
                        shell-command-switch cmd)
          proc-buf)))
     proc-buf))
-
-;;;###autoload
-(defun indent-lint-setup ()
-  "Setup indent-lint."
-  (interactive)
-  (setq indent-lint-initialized t)
-  (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
-    (advice-add sym :around fn)))
-
-;;;###autoload
-(defun indent-lint-teardown ()
-  "Setup indent-lint."
-  (interactive)
-  (setq indent-lint-initialized nil)
-  (pcase-dolist (`(,sym . ,fn) indent-lint-advice-alist)
-    (advice-remove sym fn)))
 
 (provide 'indent-lint)
 
