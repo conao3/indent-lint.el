@@ -190,13 +190,11 @@ Usage:
     (error
      (indent-lint--output-debug-info err))))
 
-(defun indent-lint--sentinel (proc _event)
+(defun indent-lint--sentinel (code proc-buf)
   "Process sentinel for `indent-lint'.
-PROC is Emacs process."
-  (let ((inhibit-read-only t)
-        (buf (process-buffer proc))
-        (code (process-exit-status proc)))
-    (with-current-buffer buf
+CODE is exit code for child process worked in PROC-BUF."
+  (let ((inhibit-read-only t))
+    (with-current-buffer proc-buf
       (insert (format "\nDiff finished%s.  %s\n"
                       (cond ((equal 0 code) " (no differences)")
                             ((equal 1 code) " (has differences)")
@@ -205,7 +203,7 @@ PROC is Emacs process."
                       (current-time-string)))
       (goto-char (point-min))
       (special-mode)
-      (display-buffer buf))))
+      (display-buffer proc-buf))))
 
 (defun indent-lint (&optional buf async)
   "Indent lint for BUF async if ASYNC is non-nil."
@@ -242,18 +240,20 @@ PROC is Emacs process."
                      :name "indent-lint"
                      :buffer proc-buf
                      :command (list shell-file-name shell-command-switch cmd)
-                     :sentinel 'indent-lint--sentinel)))
+                     :sentinel (lambda (proc _event)
+                                 (indent-lint--sentinel
+                                  (process-exit-status proc)
+                                  (process-buffer proc))))))
           (with-current-buffer buf*
             (process-send-region proc (point-min) (point-max)))
           (process-send-eof proc))
       (let ((filepath (make-temp-file "emacs--indent-lint")))
         (with-temp-file filepath
           (insert (with-current-buffer buf* (buffer-string))))
-        (call-process shell-file-name
-                      filepath proc-buf
-                      nil
-                      shell-command-switch cmd)
-        (display-buffer proc-buf)))))
+        (indent-lint--sentinel
+         (call-process shell-file-name filepath proc-buf nil
+                       shell-command-switch cmd)
+         proc-buf)))))
 
 ;;;###autoload
 (defun indent-lint-setup ()
