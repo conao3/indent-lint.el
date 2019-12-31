@@ -42,6 +42,11 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'function)
 
+(defcustom indent-lint-verbose nil
+  "If non-nil, output diff verbose."
+  :group 'indent-lint
+  :type 'boolean)
+
 (defconst indent-lint-directory (eval-and-compile
                                   (file-name-directory
                                    (or (bound-and-true-p
@@ -85,17 +90,7 @@ If omit BUF, lint `current-buffer'."
   (let* ((buf* (or buf (current-buffer)))
          (contents (with-current-buffer buf*
                      (buffer-string)))
-         (diff-buffer (get-buffer-create "*indent-lint diff*"))
-         (parse-error (lambda ()
-                        (let (errors)
-                          (while (re-search-forward
-                                  (rx line-start (*? any) ":" (* num) ": warning: ")
-                                  nil 'noerror)
-                            (push (buffer-substring-no-properties
-                                   (line-beginning-position)
-                                   (line-end-position))
-                                  errors))
-                          (nreverse errors)))))
+         (diff-buffer (get-buffer-create "*indent-lint diff*")))
     (with-temp-buffer
       (insert contents)
       (let ((buffer-file-name (buffer-name buf*)))
@@ -105,22 +100,19 @@ If omit BUF, lint `current-buffer'."
       (diff-no-select buf* (current-buffer)
                       `(,(format "--old-line-format=\"%s:%%dn: warning: Indent mismatch\n\""
                                  (buffer-name buf*))
-                        "--new-line-format=\"\""
+                        ,(if indent-lint-verbose
+                             "--new-line-format=\"%L\""
+                           "--new-line-format=\"\"")
                         "--unchanged-line-format=\"\"")
                       'no-async diff-buffer))
     (cond
-     ((eq 0 indent-lint-exit-code))
+      ((eq 0 indent-lint-exit-code))
      ((eq 1 indent-lint-exit-code)
       (display-buffer diff-buffer))
      ((eq 2 indent-lint-exit-code)
       (display-buffer diff-buffer)
       (error "Diff error")))
-    (with-current-buffer diff-buffer
-      (goto-char (point-min))
-      (let ((inhibit-read-only t))
-        (dolist (err (prog1 (funcall parse-error) (erase-buffer)))
-          (insert (format "%s\n" err))))
-      (current-buffer))))
+    diff-buffer))
 
 (defun indent-lint--output-debug-info (err)
   "Output debug info form ERR."
@@ -221,7 +213,8 @@ CODE is exit code for child process worked in PROC-BUF."
          (lint-sexp `(progn
                        (require 'indent-lint)
                        (let ((inhibit-message t)
-                             (stdin-buf (indent-lint--get-stdin-buffer)))
+                             (stdin-buf (indent-lint--get-stdin-buffer))
+                             (indent-lint-verbose ,indent-lint-verbose))
                          (with-current-buffer stdin-buf
                            (rename-buffer ,buf-name 'unique)
                            (ignore-errors
