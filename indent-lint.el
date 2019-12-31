@@ -207,11 +207,12 @@ PROC is Emacs process."
       (special-mode)
       (display-buffer buf))))
 
-(defun indent-lint (&optional buf)
-  "Indent lint for BUF."
-  (interactive)
+(defun indent-lint (&optional buf async)
+  "Indent lint for BUF async if ASYNC is non-nil."
+  (interactive (list nil t))
   (let* ((buf*     (get-buffer (or buf (current-buffer))))
          (buf-name (buffer-name buf*))
+         (proc-buf (generate-new-buffer "*indent-lint*"))
          (mode     (with-current-buffer buf* major-mode))
          (pkg-sexp  `(progn
                        (setq user-emacs-directory ,user-emacs-directory)
@@ -235,17 +236,24 @@ PROC is Emacs process."
                                "-L" indent-lint-directory
                                "--eval" (indent-lint--sexp-to-string pkg-sexp)
                                "--eval" (indent-lint--sexp-to-string lint-sexp))
-                         " "))
-         (proc (make-process
-                :name "indent-lint"
-                :buffer (generate-new-buffer "*indent-lint*")
-                :command (list shell-file-name shell-command-switch cmd)
-                :sentinel 'indent-lint--sentinel)))
-
-    (with-current-buffer buf*
-      (process-send-region proc (point-min) (point-max)))
-
-    (process-send-eof proc)))
+                         " ")))
+    (if async
+        (let ((proc (make-process
+                     :name "indent-lint"
+                     :buffer proc-buf
+                     :command (list shell-file-name shell-command-switch cmd)
+                     :sentinel 'indent-lint--sentinel)))
+          (with-current-buffer buf*
+            (process-send-region proc (point-min) (point-max)))
+          (process-send-eof proc))
+      (let ((filepath (make-temp-file "emacs--indent-lint")))
+        (with-temp-file filepath
+          (insert (with-current-buffer buf* (buffer-string))))
+        (call-process shell-file-name
+                      filepath proc-buf
+                      nil
+                      shell-command-switch cmd)
+        (display-buffer proc-buf)))))
 
 ;;;###autoload
 (defun indent-lint-setup ()
