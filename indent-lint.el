@@ -254,7 +254,8 @@ CODE is exit code for child process worked in PROC-BUF."
         (indent-lint--sentinel
          (call-process shell-file-name filepath proc-buf nil
                        shell-command-switch cmd)
-         proc-buf)))))
+         proc-buf)))
+    proc-buf))
 
 ;;;###autoload
 (defun indent-lint-setup ()
