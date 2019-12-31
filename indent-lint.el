@@ -205,6 +205,7 @@ CODE is exit code for child process worked in PROC-BUF."
       (special-mode)
       (display-buffer proc-buf))))
 
+;;;###autoload
 (defun indent-lint (&optional buf async)
   "Indent lint for BUF async if ASYNC is non-nil."
   (interactive (list nil t))
