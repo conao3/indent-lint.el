@@ -127,15 +127,16 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
             ((eq code 1)
              (promise-resolve `(,code ,output)))
             ((eq code 2)
-             (promise-reject `(fail-diff ,output)))
+             (promise-reject `(fail-diff ,code ,output)))
             (t
-             (promise-reject `(fail-diff-unknown ,output))))))))))
+             (promise-reject `(fail-diff-unknown ,code ,output))))))))))
 
 ;;;###autoload
 (async-defun indent-lint (&optional buf)
   "Indent BUF in clean Emacs and lint async."
   (interactive)
   (let ((buf* (get-buffer (or buf (current-buffer))))
+        (output-buf (generate-new-buffer "*indent-lint*"))
         (src-file   (make-temp-file "emacs-indent-lint"))
         (dest-file  (make-temp-file "emacs-indent-lint")))
     (condition-case err
@@ -144,7 +145,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
           (ignore-errors
             (delete-file src-file)
             (delete-file dest-file))
-          (with-current-buffer (generate-new-buffer "*indent-lint*")
+          (with-current-buffer output-buf
             (seq-let (code output) res
               (insert output)
               (insert
@@ -156,8 +157,8 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                        (current-time-string)))
               (special-mode)
               (diff-mode)
-              (display-buffer (current-buffer))
-              (current-buffer))))
+              (display-buffer output-buf)
+              `(,code ,output-buf))))
       (error
        (pcase err
          (`(error (fail-indent ,reason))
@@ -166,21 +167,26 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                 (prin1-to-string buf*)
                 (with-current-buffer buf* major-mode)
                 src-file dest-file
-                (prin1-to-string reason)))
+                (prin1-to-string reason))
+          `(255 nil))
 
-         (`(error (fail-diff ,reason))
+         (`(error (fail-diff ,code ,output))
           (warn "Fail diff.
   buffer: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
                 (prin1-to-string buf*)
-                src-file dest-file
-                (prin1-to-string reason)))
+                src-file dest-file output)
+          `(,code ,(with-current-buffer output-buf
+                     (insert output)
+                     output-buf)))
 
-         (`(error (fail-diff-unknown ,reason))
+         (`(error (fail-diff-unknown ,code ,output))
           (warn "Fail diff unknown.
   buffer: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
                 (prin1-to-string buf*)
-                src-file dest-file
-                (prin1-to-string reason))))))))
+                src-file dest-file output)
+          `(,code ,(with-current-buffer output-buf
+                     (insert output)
+                     output-buf))))))))
 
 (defun indent-lint-batch ()
   "Run `indent-lint--sync' and output diff to standard output.
@@ -194,39 +200,25 @@ Status code:
   2 - Diff program exit with errors
 
 Usage:
-  - Import code from stdin and guess `major-mode' from header or footer.
-      cat sample.el | \
-        {EMACS} -Q -l indent-lint.el -f indent-lint-batch
-
-  - Import code from stdin and guess `major-mode' from file extension.
-      cat sample.el | \
-        {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el
-
   - Import code from file and guess `major-mode' from file extension.
-    (Sending EOF is needed after Emacs run)
-      {EMACS} -Q -l indent-lint.el -f indent-lint-batch sample.el"
+      cask exec {EMACS} -Q --batch -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (condition-case err
-      (let* ((stdin-buffer
-              (lambda ()
-                (let ((read-line (lambda () (read-string "")))
-                      (buf (get-buffer-create "*stdin*"))
-                      line)
-                  (with-current-buffer buf
-                    (ignore-errors
-                      (while (setq line (funcall read-line))
-                        (insert line "\n"))))
-                  buf)))
-             (stdin-buf (funcall stdin-buffer))
-             (file-name (nth 0 command-line-args-left)))
-        (with-current-buffer stdin-buf
-          (when (and file-name (equal "" (buffer-string)))
-            (insert-file-contents file-name))
-          (rename-buffer (or file-name "*stdin*")))
-        (let ((diff-buffer (indent-lint stdin-buf)))
-          (princ (with-current-buffer diff-buffer (buffer-string)))
-          (kill-emacs 0)))
+      (let* ((filepath (nth 0 command-line-args-left))
+             (res
+              (let (done)
+                (funcall
+                 (async-lambda ()
+                   (let* ((buf (find-file-noselect filepath 'nowarn))
+                          (res (await (indent-lint buf))))
+                     (setq done res))))
+                (while (not done)
+                  (accept-process-output nil 1))
+                done)))
+        (seq-let (code buf) res
+          (princ (with-current-buffer buf (buffer-string)))
+          (kill-emacs code)))
     (error
      (indent-lint--output-debug-info err))))
 
