@@ -43,7 +43,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'function)
 
-(defcustom indent-lint-verbose nil
+(defcustom indent-lint-verbose t
   "If non-nil, output diff verbose."
   :group 'indent-lint
   :type 'boolean)
