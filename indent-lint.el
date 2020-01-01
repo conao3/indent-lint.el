@@ -69,7 +69,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
     (message (format "Indent-lint exit with errors. See %s" file))))
 
 (defun indent-lint--promise-indent (buf src-file dest-file)
-  "Renturn promise to save BUF to SRC-FILE and save DEST-FILE indented."
+  "Return promise to save BUF to SRC-FILE and save DEST-FILE indented."
   (with-temp-file src-file
     (insert (with-current-buffer buf (buffer-string))))
   (promise-then
@@ -191,8 +191,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
 (defun indent-lint-batch ()
   "Run `indent-lint--sync' and output diff to standard output.
 Use this only with --batch, it won't work interactively.
-
-Extra argument; FILENAME is needed to guess `major-mode' to indent.
 
 Status code:
   0 - No indentation errors and no output
