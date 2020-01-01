@@ -25,25 +25,47 @@
   - [[#special-thanks][Special Thanks]]
 
 * Description
-Indentation checker and async flycheck frontend.
+Async indentation checker and flycheck frontend.
 
 * Install
-M-x ~package-install~
+- M-x ~package-install~ indent-lint
+- M-x ~package-install~ flycheck-indent
 
 * Usage
-To enable, use something like this
+** indent-lint
+- interactive
+
+  M-x ~indent-lint~
+
+  Lint indentation for current-buffer.
+
+- Lisp program
+
+  Use ~indent-lint~ function.
+  #+begin_src emacs-lisp
+    (indent-lint BUF)
+  #+end_src
+
+  ~BUF~ accepts buffer name (string) or buffer (buffer object).
+
+  After few seconds, a buffer with different indentation lines are popped.
+
+** flycheck-indent
+To enable, use something like this.
 #+begin_src emacs-lisp
   (eval-after-load 'flycheck
     '(flycheck-indent-setup))
 #+end_src
 
 * Customize
+- indent-lint-before-indent-fn :: The function will eval before indent
+- indent-lint-verbose :: If non-nil, output diff verbose.
 
 * Information
 ** Community
-All feedback and suggestions are welcome!
+Any feedback and suggestions are welcome!
 
-You can use github issues, but you can also use [[https://conao3-support.slack.com/join/shared_invite/enQtNjUzMDMxODcyMjE1LWUwMjhiNTU3Yjk3ODIwNzAxMTgwOTkxNmJiN2M4OTZkMWY0NjI4ZTg4MTVlNzcwNDY2ZjVjYmRiZmJjZDU4MDE][Slack]]
+You can use GitHub issues, but you can also use [[https://conao3-support.slack.com/join/shared_invite/enQtNjUzMDMxODcyMjE1LWUwMjhiNTU3Yjk3ODIwNzAxMTgwOTkxNmJiN2M4OTZkMWY0NjI4ZTg4MTVlNzcwNDY2ZjVjYmRiZmJjZDU4MDE][Slack]]
 if you want a more casual conversation.
 
 ** Contribution
@@ -74,7 +96,7 @@ Below operation flow is recommended.
   # <edit loop>
   emacs indent-lint.el              # Edit something you want
 
-  make test                         # Test indent-lint via multi version Emacs
+  make test                         # Test indent-lint
   git commit -am "brabra"           # Commit (auto-run test before commit)
   # </edit loop>
 
