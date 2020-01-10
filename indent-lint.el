@@ -5,7 +5,7 @@
 ;; Author: Naoya Yamashita <conao3@gmail.com>
 ;; Version: 0.0.1
 ;; Keywords: tools
-;; Package-Requires: ((emacs "25.1") (async-await "1.0"))
+;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -207,6 +207,7 @@ Usage:
       cask exec {EMACS} -Q --batch -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
+  (require 'package)
   (let* ((filepath (nth 0 command-line-args-left))
          (buf (find-file-noselect filepath 'nowarn))
          (res (_value (promise-wait indent-lint-batch-timeout
