@@ -208,7 +208,8 @@ Usage:
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (require 'package)
-  (let* ((filepath (nth 0 command-line-args-left))
+  (let* ((indent-lint-verbose nil)
+         (filepath (nth 0 command-line-args-left))
          (buf (find-file-noselect filepath 'nowarn))
          (res (_value (promise-wait indent-lint-batch-timeout
                         (indent-lint buf)))))
