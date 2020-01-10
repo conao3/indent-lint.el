@@ -204,7 +204,7 @@ Status code:
 
 Usage:
   - Import code from file and guess `major-mode' from file extension.
-      cask exec {EMACS} -Q --batch -l indent-lint.el -f indent-lint-batch sample.el"
+      cask {EMACS} -Q --batch -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
   (require 'package)
