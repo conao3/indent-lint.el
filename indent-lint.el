@@ -48,6 +48,11 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'boolean)
 
+(defcustom indent-lint-batch-timeout 10
+  "Timeout for `indent-lint-batch' in sec."
+  :group 'indent-lint
+  :type 'number)
+
 (defconst indent-lint-directory (eval-and-compile
                                   (file-name-directory
                                    (or (bound-and-true-p
@@ -56,13 +61,13 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                                        (buffer-file-name))))
   "Path to indent-lint root.")
 
-(defun indent-lint--output-debug-info (err)
-  "Output debug info form ERR."
+(defun indent-lint--output-debug-info (state err)
+  "Output debug info form ERR with STATE."
   (let ((file (locate-user-emacs-file "flycheck-indent.debug")))
     (with-temp-file file
       (erase-buffer)
       (insert (format "Error at %s\n" (format-time-string "%Y-%m-%d %H:%M")))
-      (insert (format "Error: %s\n" (pp-to-string err)))
+      (insert (format "Error (%s): %s\n" (pp-to-string state) (pp-to-string err)))
       (insert "\n")
       (insert (with-output-to-string
                 (backtrace))))
@@ -202,23 +207,20 @@ Usage:
       cask exec {EMACS} -Q --batch -l indent-lint.el -f indent-lint-batch sample.el"
   (unless noninteractive
     (error "`indent-lint-batch' can be used only with --batch"))
-  (condition-case err
-      (let* ((filepath (nth 0 command-line-args-left))
-             (res
-              (let (done)
-                (funcall
-                 (async-lambda ()
-                   (let* ((buf (find-file-noselect filepath 'nowarn))
-                          (res (await (indent-lint buf))))
-                     (setq done res))))
-                (while (not done)
-                  (accept-process-output nil 1))
-                done)))
-        (seq-let (code buf) res
+  (let* ((filepath (nth 0 command-line-args-left))
+         (buf (find-file-noselect filepath 'nowarn))
+         (res (_value (promise-wait indent-lint-batch-timeout
+                        (indent-lint buf)))))
+    (seq-let (state value) res
+      (cond
+       ((eq :fullfilled state)
+        (seq-let (code buf) value
           (princ (with-current-buffer buf (buffer-string)))
           (kill-emacs code)))
-    (error
-     (indent-lint--output-debug-info err))))
+       ((eq :rejected state)
+        (indent-lint--output-debug-info :rejected value))
+       ((eq :timeouted state)
+        (indent-lint--output-debug-info :timeouted value))))))
 
 (provide 'indent-lint)
 
