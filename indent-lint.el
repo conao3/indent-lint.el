@@ -87,8 +87,12 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
          (with-temp-file ,dest-file
            (insert-file-contents ,src-file)
            (let ((buffer-file-name ,(buffer-name buf)))
-             (normal-mode)
              (funcall #',(with-current-buffer buf major-mode))
+             (dolist (argcell ',(with-current-buffer buf (buffer-local-variables)))
+               (let ((arg (car argcell))
+                     (val (cdr argcell)))
+                 (ignore-errors
+                     (set arg val))))
              (indent-region (point-min) (point-max)))))))
    (lambda (res)
      (promise-resolve res))
