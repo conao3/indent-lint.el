@@ -73,6 +73,39 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                 (backtrace))))
     (message (format "Indent-lint exit with errors. See %s" file))))
 
+(defun indent-lint--buffer-local-variable (buf)
+  "Return buffer-local variable alist in BUF."
+  (let ((local (mapcan
+                (lambda (elm)
+                  (let* ((key (car elm))
+                         (value (cdr elm))
+                         (keyname (symbol-name key)))
+                    (condition-case err
+                        (let ((print-level nil)
+                              (print-length nil)
+                              (print-quoted t)
+                              (print-circle t)
+                              (print-escape-nonascii t))
+                          (read (prin1-to-string value))
+                          (if (and
+                               (or
+                                ;; after-save-hook etc
+                                (string-match "hook" keyname)
+                                ;; before-change-functions etc
+                                (string-match "functions?" keyname))
+                               ;; not indent-region-function etc
+                               (not (string-match "indent" keyname)))
+                              (prog1 nil
+                                (warn "Filter variable: %s, %s"
+                                      key (prin1-to-string value)))
+                            (list (cons key value))))
+                      (error
+                       (prog1 nil
+                         (warn "Could not read: %s, %s" key err))))))
+                (with-current-buffer buf (buffer-local-variables)))))
+    (warn (format "map: %s" (prin1-to-string local)))
+    local))
+
 (defun indent-lint--promise-indent (buf src-file dest-file)
   "Return promise to save BUF to SRC-FILE and save DEST-FILE indented."
   (with-temp-file src-file
@@ -86,14 +119,12 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
          (package-initialize)
          (with-temp-file ,dest-file
            (insert-file-contents ,src-file)
-           (let ((buffer-file-name ,(buffer-name buf)))
-             (funcall #',(with-current-buffer buf major-mode))
-             (dolist (argcell ',(with-current-buffer buf (buffer-local-variables)))
-               (let ((arg (car argcell))
-                     (val (cdr argcell)))
-                 (ignore-errors
-                     (set arg val))))
-             (indent-region (point-min) (point-max)))))))
+           (funcall #',(with-current-buffer buf major-mode))
+           (dolist (cell ',(indent-lint--buffer-local-variable buf))
+             (condition-case _err
+                 (set (car cell) (cdr cell))
+               (setting-constant nil)))
+           (indent-region (point-min) (point-max))))))
    (lambda (res)
      (promise-resolve res))
    (lambda (reason)
