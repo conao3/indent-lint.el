@@ -48,6 +48,11 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'boolean)
 
+(defcustom indent-lint-debug nil
+  "If non-nil, show debug information."
+  :group 'indent-lint-batch
+  :type 'number)
+
 (defcustom indent-lint-batch-timeout 10
   "Timeout for `indent-lint-batch' in sec."
   :group 'indent-lint
@@ -96,14 +101,17 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                                ;; not indent-region-function etc
                                (not (string-match "indent" keyname)))
                               (prog1 nil
-                                (warn "Filter variable: %s, %s"
-                                      key (prin1-to-string value)))
+                                (when indent-lint-debug
+                                  (warn "Filter variable: %s, %s"
+                                        key (prin1-to-string value))))
                             (list (cons key value))))
                       (error
                        (prog1 nil
-                         (warn "Could not read: %s, %s" key err))))))
+                         (when indent-lint-debug
+                           (warn "Could not read: %s, %s" key err)))))))
                 (with-current-buffer buf (buffer-local-variables)))))
-    (warn (format "map: %s" (prin1-to-string local)))
+    (when indent-lint-debug
+      (warn (format "Import variables: %s" (prin1-to-string local))))
     local))
 
 (defun indent-lint--promise-indent (buf src-file dest-file)
@@ -247,7 +255,7 @@ Usage:
          (filepath (nth 0 command-line-args-left))
          (buf (find-file-noselect filepath 'nowarn))
          (res (_value (promise-wait indent-lint-batch-timeout
-                        (indent-lint buf)))))
+                                    (indent-lint buf)))))
     (seq-let (state value) res
       (cond
        ((eq :fullfilled state)
