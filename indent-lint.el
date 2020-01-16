@@ -48,6 +48,11 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'boolean)
 
+(defcustom indent-lint-debug nil
+  "If non-nil, show debug information."
+  :group 'indent-lint-batch
+  :type 'number)
+
 (defcustom indent-lint-batch-timeout 10
   "Timeout for `indent-lint-batch' in sec."
   :group 'indent-lint
@@ -73,6 +78,42 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                 (backtrace))))
     (message (format "Indent-lint exit with errors. See %s" file))))
 
+(defun indent-lint--buffer-local-variable (buf)
+  "Return buffer-local variable alist in BUF."
+  (let ((local (mapcan
+                (lambda (elm)
+                  (let* ((key (car elm))
+                         (value (cdr elm))
+                         (keyname (symbol-name key)))
+                    (condition-case err
+                        (let ((print-level nil)
+                              (print-length nil)
+                              (print-quoted t)
+                              (print-circle t)
+                              (print-escape-nonascii t))
+                          (read (prin1-to-string value))
+                          (if (and
+                               (or
+                                ;; after-save-hook etc
+                                (string-match "hook" keyname)
+                                ;; before-change-functions etc
+                                (string-match "functions?" keyname))
+                               ;; not indent-region-function etc
+                               (not (string-match "indent" keyname)))
+                              (prog1 nil
+                                (when indent-lint-debug
+                                  (warn "Filter variable: %s, %s"
+                                        key (prin1-to-string value))))
+                            (list (cons key value))))
+                      (error
+                       (prog1 nil
+                         (when indent-lint-debug
+                           (warn "Could not read: %s, %s" key err)))))))
+                (with-current-buffer buf (buffer-local-variables)))))
+    (when indent-lint-debug
+      (warn (format "Import variables: %s" (prin1-to-string local))))
+    local))
+
 (defun indent-lint--promise-indent (buf src-file dest-file)
   "Return promise to save BUF to SRC-FILE and save DEST-FILE indented."
   (with-temp-file src-file
@@ -86,10 +127,12 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
          (package-initialize)
          (with-temp-file ,dest-file
            (insert-file-contents ,src-file)
-           (let ((buffer-file-name ,(buffer-name buf)))
-             (normal-mode)
-             (funcall #',(with-current-buffer buf major-mode))
-             (indent-region (point-min) (point-max)))))))
+           (funcall #',(with-current-buffer buf major-mode))
+           (dolist (cell ',(indent-lint--buffer-local-variable buf))
+             (condition-case _err
+                 (set (car cell) (cdr cell))
+               (setting-constant nil)))
+           (indent-region (point-min) (point-max))))))
    (lambda (res)
      (promise-resolve res))
    (lambda (reason)
@@ -212,7 +255,7 @@ Usage:
          (filepath (nth 0 command-line-args-left))
          (buf (find-file-noselect filepath 'nowarn))
          (res (_value (promise-wait indent-lint-batch-timeout
-                        (indent-lint buf)))))
+                                    (indent-lint buf)))))
     (seq-let (state value) res
       (cond
        ((eq :fullfilled state)
