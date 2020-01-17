@@ -276,7 +276,7 @@ Usage:
          (filepath (nth 0 command-line-args-left))
          (buf (find-file-noselect filepath 'nowarn))
          (res (_value (promise-wait indent-lint-batch-timeout
-                                    (indent-lint buf)))))
+                        (indent-lint buf)))))
     (seq-let (state value) res
       (cond
        ((eq :fullfilled state)
