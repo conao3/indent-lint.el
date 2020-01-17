@@ -261,7 +261,11 @@ Usage:
       (cond
        ((eq :fullfilled state)
         (seq-let (code buf) value
-          (princ (with-current-buffer buf (buffer-string)))
+          (princ (with-current-buffer buf
+                   (let ((inhibit-read-only t))
+                     (goto-char (point-max))
+                     (delete-region (line-beginning-position -1) (point))
+                     (buffer-string))))
           (kill-emacs code)))
        ((eq :rejected state)
         (indent-lint--output-debug-info :rejected value))
