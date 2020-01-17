@@ -66,6 +66,9 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                                        (buffer-file-name))))
   "Path to indent-lint root.")
 
+
+;;; funcitons
+
 (defun indent-lint--output-debug-info (state err)
   "Output debug info form ERR with STATE."
   (let ((file (locate-user-emacs-file "flycheck-indent.debug")))
@@ -178,6 +181,9 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
              (promise-reject `(fail-diff ,code ,output)))
             (t
              (promise-reject `(fail-diff-unknown ,code ,output))))))))))
+
+
+;;; main
 
 ;;;###autoload
 (async-defun indent-lint (&optional buf)
