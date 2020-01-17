@@ -119,27 +119,30 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
 
 (defun indent-lint--promise-indent (buf src-file dest-file)
   "Return promise to save BUF to SRC-FILE and save DEST-FILE indented."
-  (with-temp-file src-file
-    (insert (with-current-buffer buf (buffer-string))))
-  (promise-then
-   (promise:async-start
-    `(lambda ()
-       (progn
-         (setq user-emacs-directory ,user-emacs-directory)
-         (setq package-user-dir ,package-user-dir)
-         (package-initialize)
-         (with-temp-file ,dest-file
-           (insert-file-contents ,src-file)
-           (funcall #',(with-current-buffer buf major-mode))
-           (dolist (cell ',(indent-lint--buffer-local-variable buf))
-             (condition-case _err
-                 (set (car cell) (cdr cell))
-               (setting-constant nil)))
-           (indent-region (point-min) (point-max))))))
-   (lambda (res)
-     (promise-resolve res))
-   (lambda (reason)
-     (promise-reject `(fail-indent ,reason)))))
+  (with-current-buffer buf
+    (let ((mode major-mode)
+          (contents (buffer-string)))
+      (with-temp-file src-file
+        (insert contents))
+      (promise-then
+       (promise:async-start
+        `(lambda ()
+           (progn
+             (setq user-emacs-directory ,user-emacs-directory)
+             (setq package-user-dir ,package-user-dir)
+             (package-initialize)
+             (with-temp-file ,dest-file
+               (insert-file-contents ,src-file)
+               (funcall #',mode)
+               (dolist (cell ',(indent-lint--buffer-local-variable buf))
+                 (condition-case _err
+                     (set (car cell) (cdr cell))
+                   (setting-constant nil)))
+               (indent-region (point-min) (point-max))))))
+       (lambda (res)
+         (promise-resolve res))
+       (lambda (reason)
+         (promise-reject `(fail-indent ,reason)))))))
 
 (defun indent-lint--promise-diff (buf src-file dest-file)
   "Return promise to diff SRC-FILE and DEST-FILE named BUF."
