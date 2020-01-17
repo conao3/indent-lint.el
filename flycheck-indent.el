@@ -47,10 +47,6 @@
    '(progn
       (package-initialize)
       (require 'indent-lint)
-      (setq indent-lint-before-indent-fn
-            (lambda (raw-buffer _indent-buffer)
-              (ignore-errors
-                (eval-buffer raw-buffer))))
       (indent-lint-batch))))
 
 (flycheck-define-checker indent-elisp
