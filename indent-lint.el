@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 0.0.1
+;; Version: 1.0.2
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "26.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -210,13 +210,13 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
       (error
        (pcase err
          (`(error (fail-indent ,reason))
-          (warn "Fail indent
+          (warn "Fail indent in clean Emacs
   buffer: %s\n  major-mode: %s\n  src-file: %s\n  dest-file: %s\n  reason: %s"
                 (prin1-to-string buf*)
                 (with-current-buffer buf* major-mode)
                 src-file dest-file
                 (prin1-to-string reason))
-          `(255 nil))
+          `(3 nil))
 
          (`(error (fail-diff ,code ,output))
           (warn "Fail diff.
@@ -244,6 +244,7 @@ Status code:
   0 - No indentation errors and no output
   1 - Found indentation errors and diff output
   2 - Diff program exit with errors
+  3 - Error when create indent file in clean Emacs
 
 Usage:
   - Import code from file and guess `major-mode' from file extension.
