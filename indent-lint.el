@@ -67,6 +67,14 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   "Path to indent-lint root.")
 
 
+;;; hooks
+
+(defun indent-lint--hook-emacs-lisp-mode ()
+  "Hook function before indnet buffer at `emacs-lisp-mode'."
+  (ignore-errors
+    (eval-buffer)))
+
+
 ;;; funcitons
 
 (defun indent-lint--output-debug-info (state err)
@@ -138,6 +146,9 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                  (condition-case _err
                      (set (car cell) (cdr cell))
                    (setting-constant nil)))
+               ,(when-let (fn (symbol-function
+                               (intern (format "indent-lint--hook-%s" mode))))
+                  `(funcall #',fn))
                (indent-region (point-min) (point-max))))))
        (lambda (res)
          (promise-resolve res))
