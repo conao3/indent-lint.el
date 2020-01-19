@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 1.0.5
+;; Version: 1.0.6
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "26.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -208,8 +208,8 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
         (src-file   (make-temp-file "emacs-indent-lint"))
         (dest-file  (make-temp-file "emacs-indent-lint")))
     (condition-case err
-        (let* ((res (await (indent-lint--promise-indent buf* src-file dest-file)))
-               (res (await (indent-lint--promise-diff buf* src-file dest-file))))
+        (let* ((_res (await (indent-lint--promise-indent buf* src-file dest-file)))
+               (res  (await (indent-lint--promise-diff buf* src-file dest-file))))
           (ignore-errors
             (delete-file src-file)
             (delete-file dest-file))
@@ -285,7 +285,7 @@ Usage:
         (seq-let (state value) res
           (cond
            ((eq :fullfilled state)
-            (seq-let (code buf) value
+            (seq-let (_code buf) value
               (princ (with-current-buffer buf
                        (let ((inhibit-read-only t))
                          (goto-char (point-max))
