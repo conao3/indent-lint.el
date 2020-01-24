@@ -58,14 +58,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'number)
 
-(defconst indent-lint-directory (eval-and-compile
-                                  (file-name-directory
-                                   (or (bound-and-true-p
-                                        byte-compile-current-file)
-                                       load-file-name
-                                       (buffer-file-name))))
-  "Path to indent-lint root.")
-
 
 ;;; hooks
 

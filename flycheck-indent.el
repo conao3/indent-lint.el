@@ -54,7 +54,6 @@
   :command ("emacs"
             (eval flycheck-emacs-args)
             "-L" "."
-            "-L" (eval indent-lint-directory)
             "--eval" (eval flycheck-indent-prepare-sexp)
             "-f" "indent-lint-batch"
             (eval (buffer-name (current-buffer))))
