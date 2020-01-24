@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 1.0.7
+;; Version: 1.0.8
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -277,7 +277,7 @@ Usage:
     (error "`indent-lint-batch' can be used only with --batch"))
   (require 'package)
   (let ((indent-lint-verbose nil)
-        code)
+        (exitcode 0))
     (dolist (filepath command-line-args-left)
       (let* ((buf (find-file-noselect filepath 'nowarn))
              (res (_value (promise-wait indent-lint-batch-timeout
@@ -285,19 +285,21 @@ Usage:
         (seq-let (state value) res
           (cond
            ((eq :fullfilled state)
-            (seq-let (_code buf) value
+            (seq-let (code buf) value
               (princ (with-current-buffer buf
                        (let ((inhibit-read-only t))
                          (goto-char (point-max))
                          (delete-region (line-beginning-position -1) (point))
-                         (buffer-string))))))
+                         (buffer-string))))
+              (unless (= code 0)
+                (setq exitcode code))))
            ((eq :rejected state)
             (indent-lint--output-debug-info :rejected value)
-            (setq code (car value)))
+            (setq exitcode (car value)))
            ((eq :timeouted state)
             (indent-lint--output-debug-info :timeouted value)
-            (setq code 100))))))
-    (kill-emacs (or code 0))))
+            (setq exitcode 100))))))
+    (kill-emacs exitcode)))
 
 (provide 'indent-lint)
 
