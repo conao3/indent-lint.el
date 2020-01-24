@@ -42,12 +42,12 @@
   :group 'tools
   :link '(url-link :tag "Github" "https://github.com/conao3/indent-lint.el"))
 
-(defconst flycheck-indent-run-sexp-str
+(defconst flycheck-indent-prepare-sexp
   (flycheck-sexp-to-string
-   '(progn
+   `(progn
+      (setq user-emacs-directory ,user-emacs-directory)
       (package-initialize)
-      (require 'indent-lint)
-      (indent-lint-batch))))
+      (require 'indent-lint))))
 
 (flycheck-define-checker indent-elisp
   "A indent checker for Elisp."
@@ -55,13 +55,8 @@
             (eval flycheck-emacs-args)
             "-L" "."
             "-L" (eval indent-lint-directory)
-            (option "--eval" flycheck-emacs-lisp-package-user-dir nil
-                    flycheck-option-emacs-lisp-package-user-dir)
-            (option "--eval" flycheck-emacs-lisp-initialize-packages nil
-                    flycheck-option-emacs-lisp-package-initialize)
-            "--eval" (eval (flycheck-sexp-to-string
-                            `(setq user-emacs-directory ,user-emacs-directory)))
-            "--eval" (eval flycheck-indent-run-sexp-str)
+            "--eval" (eval flycheck-indent-prepare-sexp)
+            "-f" "indent-lint-batch"
             (eval (buffer-name (current-buffer))))
   :standard-input t
   :error-patterns
