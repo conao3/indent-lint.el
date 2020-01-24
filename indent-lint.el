@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 1.0.9
+;; Version: 1.1.0
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -57,14 +57,6 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   "Timeout for `indent-lint-batch' in sec."
   :group 'indent-lint
   :type 'number)
-
-(defconst indent-lint-directory (eval-and-compile
-                                  (file-name-directory
-                                   (or (bound-and-true-p
-                                        byte-compile-current-file)
-                                       load-file-name
-                                       (buffer-file-name))))
-  "Path to indent-lint root.")
 
 
 ;;; hooks
