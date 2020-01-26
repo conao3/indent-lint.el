@@ -271,27 +271,38 @@ Usage:
   (let ((indent-lint-verbose nil)
         (exitcode 0))
     (dolist (filepath command-line-args-left)
-      (let* ((buf (find-file-noselect filepath 'nowarn))
-             (res (_value (promise-wait indent-lint-batch-timeout
-                            (indent-lint buf)))))
-        (seq-let (state value) res
-          (cond
-           ((eq :fullfilled state)
-            (seq-let (code buf) value
-              (princ (with-current-buffer buf
-                       (let ((inhibit-read-only t))
-                         (goto-char (point-max))
-                         (delete-region (line-beginning-position -1) (point))
-                         (buffer-string))))
-              (unless (= code 0)
-                (setq exitcode code))))
-           ((eq :rejected state)
-            (indent-lint--output-debug-info :rejected value)
-            (setq exitcode (car value)))
-           ((eq :timeouted state)
-            (indent-lint--output-debug-info :timeouted value)
-            (setq exitcode 100))))))
+      ;; When `exitcode' is 2 or larger, skip all remaining files.
+      (unless (>= exitcode 2)
+        (setf exitcode (max exitcode (indent-lint-file filepath)))))
     (kill-emacs exitcode)))
+
+(defun indent-lint-file (filepath)
+  "Lint FILEPATH.
+Return value is an integer.  See `indent-lint-batch' for possible
+values."
+  (let* ((buf (find-file-noselect filepath 'nowarn))
+         (res (_value (promise-wait indent-lint-batch-timeout
+                                    (indent-lint buf))))
+         (result 0))
+    (seq-let (state value) res
+      (cond
+       ((eq :fullfilled state)
+        (seq-let (code buf) value
+          (princ (with-current-buffer buf
+                   (let ((inhibit-read-only t))
+                     (goto-char (point-max))
+                     (delete-region (line-beginning-position -1) (point))
+                     (buffer-string))))
+          (unless (= code 0)
+            (setq result code))))
+       ((eq :rejected state)
+        (indent-lint--output-debug-info :rejected value)
+        (setq result (car value)))
+       ((eq :timeouted state)
+        (indent-lint--output-debug-info :timeouted value)
+        (setq result 100))))
+    result))
+
 
 (provide 'indent-lint)
 
