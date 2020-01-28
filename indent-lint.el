@@ -254,6 +254,14 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                      (insert output)
                      output-buf))))))))
 
+;;;###autoload
+(defun indent-lint-file (filepath)
+  "Return promise to run `indent-lint' for FILEPATH."
+  (if (not (file-readable-p filepath))
+      (promise-reject `(fail-file-readable ,filepath))
+    (let ((buf (find-file-noselect filepath)))
+      (indent-lint buf))))
+
 (defun indent-lint-batch ()
   "Run `indent-lint--sync' and output diff to standard output.
 Use this only with --batch, it won't work interactively.
