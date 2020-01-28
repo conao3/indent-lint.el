@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 1.1.0
+;; Version: 1.1.1
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -42,6 +42,11 @@
 Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
   :group 'indent-lint
   :type 'function)
+
+(defcustom indent-lint-popup t
+  "If non-nil, popup diff buffer."
+  :group 'indent-lint
+  :type 'boolean)
 
 (defcustom indent-lint-verbose t
   "If non-nil, output diff verbose."
@@ -217,7 +222,8 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                        (current-time-string)))
               (special-mode)
               (diff-mode)
-              (display-buffer output-buf)
+              (when indent-lint-popup
+                (display-buffer output-buf))
               `(,code ,output-buf))))
       (error
        (pcase err
@@ -269,6 +275,7 @@ Usage:
     (error "`indent-lint-batch' can be used only with --batch"))
   (require 'package)
   (let ((indent-lint-verbose nil)
+        (indent-lint-popup nil)
         (exitcode 0))
     (dolist (filepath command-line-args-left)
       (let* ((buf (find-file-noselect filepath 'nowarn))
