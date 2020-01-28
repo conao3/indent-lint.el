@@ -3,7 +3,7 @@
 ;; Copyright (C) 2019  Naoya Yamashita
 
 ;; Author: Naoya Yamashita <conao3@gmail.com>
-;; Version: 1.1.1
+;; Version: 1.1.2
 ;; Keywords: tools
 ;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
 ;; URL: https://github.com/conao3/indent-lint.el
@@ -253,6 +253,14 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
           `(,code ,(with-current-buffer output-buf
                      (insert output)
                      output-buf))))))))
+
+;;;###autoload
+(defun indent-lint-file (filepath)
+  "Return promise to run `indent-lint' for FILEPATH."
+  (if (not (file-readable-p filepath))
+      (promise-reject `(fail-file-readable ,filepath))
+    (let ((buf (find-file-noselect filepath)))
+      (indent-lint buf))))
 
 (defun indent-lint-batch ()
   "Run `indent-lint--sync' and output diff to standard output.
