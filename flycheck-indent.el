@@ -57,7 +57,6 @@
             "--eval" (eval flycheck-indent-prepare-sexp)
             "-f" "indent-lint-batch"
             (eval (buffer-name (current-buffer))))
-  :standard-input t
   :error-patterns
   ((warning (file-name) ":" line ": warning: " (message)))
   :modes emacs-lisp-mode)
