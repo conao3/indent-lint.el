@@ -5,7 +5,7 @@
 ;; Author: Naoya Yamashita <conao3@gmail.com>
 ;; Version: 1.1.4
 ;; Keywords: tools
-;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4"))
+;; Package-Requires: ((emacs "25.1") (async-await "1.0") (async "1.9.4") (promise "1.1")
 ;; URL: https://github.com/conao3/indent-lint.el
 
 ;; This program is free software: you can redistribute it and/or modify
@@ -30,6 +30,7 @@
 
 (require 'seq)
 (require 'async-await)
+(require 'promise)
 
 (defgroup indent-lint nil
   "Asynchronous indentation checker"
@@ -72,7 +73,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
     (eval-buffer)))
 
 
-;;; funcitons
+;;; functions
 
 (defun indent-lint--output-debug-info (state err)
   "Output debug info form ERR with STATE."
@@ -162,20 +163,15 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                           nil))))))
     (promise-then
      (promise:make-process
-      shell-file-name
-      shell-command-switch
-      (mapconcat
-       #'shell-quote-argument
-       `("diff"
-         "--old-line-format"
-         ,(if indent-lint-verbose
-              (format "%s:%%dn: warning: Indent mismatch\n-%%L" (buffer-name buf))
-            (format "%s:%%dn: warning: Indent mismatch\n" (buffer-name buf)))
-         "--new-line-format" ,(if indent-lint-verbose "+%L" "")
-         "--unchanged-line-format" ""
-         ,src-file
-         ,dest-file)
-       " "))
+      `("diff"
+        "--old-line-format"
+        ,(if indent-lint-verbose
+             (format "%s:%%dn: warning: Indent mismatch\n-%%L" (shell-quote-argument (buffer-name buf)))
+           (format "%s:%%dn: warning: Indent mismatch\n" (shell-quote-argument (buffer-name buf))))
+        "--new-line-format" ,(if indent-lint-verbose "+%L" "")
+        "--unchanged-line-format" ""
+        ,(shell-quote-argument src-file)
+        ,(shell-quote-argument dest-file)))
      (lambda (res)
        (seq-let (stdin stdout) res
          (let ((code 0)
@@ -287,8 +283,8 @@ Usage:
         (exitcode 0))
     (dolist (filepath command-line-args-left)
       (let* ((buf (find-file-noselect filepath 'nowarn))
-             (res (_value (promise-wait indent-lint-batch-timeout
-                            (indent-lint buf)))))
+             (res (promise-_value (promise-wait indent-lint-batch-timeout
+                                    (indent-lint buf)))))
         (seq-let (state value) res
           (cond
            ((eq :fullfilled state)
