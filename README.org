@@ -84,7 +84,7 @@ Exit codes:
 
 * Requirements
 
-- Emacs 25.1 or later
+- Emacs 27.1 or later
 - [[https://github.com/chuntaro/emacs-async-await][async-await]]
 - [[https://github.com/jwiegley/emacs-async][async]]
 - [[https://github.com/chuntaro/emacs-promise][promise]]
