@@ -23,7 +23,13 @@
 
 ;;; Commentary:
 
-;; Indentation checker
+;; Indent Lint checks a buffer against its major mode's indentation rules.
+;; It indents a copy in a separate Emacs process, then displays the
+;; differences without editing the original buffer.
+;;
+;; Run M-x indent-lint to check the current buffer.  Use indent-lint-batch
+;; for command-line checks or enable flycheck-indent to report indentation
+;; mismatches through Flycheck.
 
 
 ;;; Code:
@@ -68,9 +74,13 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
 ;;; hooks
 
 (defun indent-lint--before-indent-emacs-lisp-mode ()
-  "Before-Indent function before indnet buffer at `emacs-lisp-mode'."
-  (ignore-errors
-    (eval-buffer)))
+  "Evaluate the buffer to load indentation definitions before indenting.
+Continue with the available indentation rules if evaluation fails."
+  (condition-case err
+      (eval-buffer)
+    (error
+     (message "Indent Lint could not evaluate the Lisp buffer: %s"
+              (error-message-string err)))))
 
 
 ;;; functions
@@ -85,7 +95,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
       (insert "\n")
       (insert (with-output-to-string
                 (backtrace))))
-    (message (format "Indent-lint exit with errors. See %s" file))))
+    (message "Indent-lint exit with errors. See %s" file)))
 
 (defun indent-lint--buffer-local-variable (buf)
   "Return buffer-local variable alist in BUF."
@@ -120,7 +130,7 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
                            (warn "Could not read: %s, %s" key err)))))))
                 (with-current-buffer buf (buffer-local-variables)))))
     (when indent-lint-debug
-      (warn (format "Import variables: %s" (prin1-to-string local))))
+      (warn "Import variables: %s" (prin1-to-string local)))
     local))
 
 (defun indent-lint--promise-indent (buf src-file dest-file)
@@ -203,9 +213,12 @@ Function will be called with 2 variables; `(,raw-buffer ,indent-buffer)."
     (condition-case err
         (let* ((_res (await (indent-lint--promise-indent buf* src-file dest-file)))
                (res  (await (indent-lint--promise-diff buf* src-file dest-file))))
-          (ignore-errors
-            (delete-file src-file)
-            (delete-file dest-file))
+          (dolist (file (list src-file dest-file))
+            (condition-case err
+                (delete-file file)
+              (file-missing nil)
+              (file-error
+               (warn "Indent Lint could not delete %s: %s" file (error-message-string err)))))
           (with-current-buffer output-buf
             (seq-let (code output) res
               (insert output)
