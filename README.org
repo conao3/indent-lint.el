@@ -39,6 +39,10 @@ Or with =use-package=:
 
 Run =M-x indent-lint= to check the current buffer. After a moment, a diff buffer will appear showing any lines with incorrect indentation.
 
+[[file:images/indent-lint.png]]
+
+The screenshot shows sample code in the =modus-operandi= theme.
+
 ** Programmatic Use
 
 #+begin_src emacs-lisp
@@ -48,6 +52,10 @@ Run =M-x indent-lint= to check the current buffer. After a moment, a diff buffer
 =BUFFER= accepts either a buffer name (string) or buffer object.
 
 ** Flycheck Integration
+
+[[file:images/flycheck-indent.png]]
+
+The screenshot shows the warnings and the error list for sample code in the =modus-operandi= theme.
 
 Enable the Flycheck checker with:
 
